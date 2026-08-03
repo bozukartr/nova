@@ -27,8 +27,17 @@ npm run check   # test + derleme
 | **Tahta** | 5×4 · 6×5 · 8×6 |
 | **Rakip** | 2 oyuncu · KOLAY · NORMAL · ZOR |
 
-Klavye: `← ↑ → ↓` gez · `boşluk` bırak · `Z` geri al · `R` yeni tur · `M` ses ·
-`?` kurallar · `F` kare sayacı (`?fps=1` ile de açılır).
+### Menü
+
+Ana menü dört girişten oluşur: **OYNA 2P**, **OYNA AI** (zorluk ekranı),
+**ÖĞREN** (görsel kural kartları) ve **AYARLAR** (tahta, seri, ses, titreşim,
+istatistik sıfırlama). Oyun içindeyken alt konsoldaki ≡ düğmesi aynı menüyü
+duraklatma ekranı olarak açar; üstte **DEVAM ET**, tur bittiyse **SONRAKİ TUR**
+görünür. Menü canlı sahnenin üzerine yarı saydam perdeyle biner.
+
+Masaüstünde klavye de çalışır (menüde tanıtılmaz): `← ↑ → ↓` gez ·
+`boşluk` bırak · `Z` geri al · `R` yeni tur · `M` ses · `Esc` menü ·
+`F` kare sayacı (`?fps=1` ile de açılır).
 
 ## Yapı
 
@@ -43,7 +52,7 @@ src/
   sprites.js        ön-render sprite atlası
   background.js     WebGL bulutsu arka planı
   audio.js          WebAudio ile sentezlenen sesler (ses dosyası yok)
-  hud.js            DOM tarafının tamamı
+  hud.js            DOM tarafının tamamı: HUD, menü panelleri, kazanma kartı
   anim.js           minik tween motoru
   storage.js        ayar kalıcılığı (localStorage, geri düşüşlü)
   main.js           açılış, ana döngü, uyarlanabilir kalite
@@ -89,6 +98,10 @@ Bu depo tek dosyalık bir prototipten geliştirildi. Belli başlı değişiklikl
 - **AI güçlendirildi.** Sabit derinlik yerine zaman bütçeli iteratif derinleşme,
   hamle sıralaması ve düzeltilmiş değerlendirme. (Prototipteki değerlendirme,
   rakip henüz hiç oynamamışken açılış hamlesini "kazandım" sanabiliyordu.)
+- **Menü baştan tasarlandı.** Prototipte açılış ekranı bir duvar dolusu kural
+  metni + dört segment kontrolüydü; yerine dört girişli ana menü ve ayrı ekranlar
+  geldi (zorluk, görsel kural kartları, ayarlar). Oyun içinde aynı menü duraklatma
+  ekranı olarak açılıyor.
 - **Geri alma** eklendi; AI'ya karşı oynarken rakibin cevabıyla birlikte geri alır.
 - **Tahta ve seri seçenekleri** eklendi, ayarlar ve maç istatistikleri saklanıyor.
 - **Klavye ve ekran okuyucu desteği**: imleçle gezinme, `aria-live` ile sıra ve

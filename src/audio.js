@@ -76,11 +76,12 @@ export function createAudio(enabled = true) {
 
   return {
     get enabled() { return on; },
-    toggle() {
-      on = !on;
+    setEnabled(next) {
+      on = !!next;
       if (on) { ready(); tone(880, 1320, .08, 'triangle', .10); }
       return on;
     },
+    toggle() { return this.setEnabled(!on); },
     /** İlk kullanıcı dokunuşunda çağrılır: iOS ses bağlamını burada açar. */
     unlock() { try { if (on) ready(); } catch { /* yoksay */ } },
     drop(n) { tone(360 + n * 90, 220 + n * 60, .10, 'triangle', .11); },

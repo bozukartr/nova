@@ -14,7 +14,7 @@ import {
 import { pickMove } from './ai.js';
 import { SIDES, BOARDS, TRAVEL_MS, SETTLE_MS, AI_SIDE, AI_OFF } from './config.js';
 import { loadSettings, saveSettings } from './storage.js';
-import { sleep, haptic } from './util.js';
+import { sleep, haptic, setHaptics } from './util.js';
 
 const UNDO_LIMIT = 80;
 
@@ -41,6 +41,20 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     if (!started || over || busy || thinking || !undoStack.length) return false;
     if (!isAI()) return true;
     return undoStack.some(e => e.side === humanSide());
+  }
+
+  const matchIsOver = () => wins[1] >= settings.series || wins[2] >= settings.series;
+
+  function menuState() {
+    return {
+      started, round, wins, stats, over,
+      matchOver: matchIsOver(),
+      level: settings.level,
+      board: settings.board,
+      series: settings.series,
+      sound: settings.sound,
+      haptics: settings.haptics
+    };
   }
 
   function syncHud(turnChanged) {
@@ -116,7 +130,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
         ? `TOPLAM ${stats[1]} — ${stats[2]}`
         : (streak.count >= 2 ? `${SIDES[winner].name} ÜST ÜSTE ${streak.count}` : '')
     });
-    setTimeout(() => { if (my === epoch) hud.openSheet('sheetWin'); }, 900);
+    setTimeout(() => { if (my === epoch) hud.openWin(); }, 900);
   }
 
   /* ── hamle ve zincir ─────────────────────────────────────────── */
@@ -254,33 +268,47 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
   function applySettings(patch) {
     const before = { ...settings };
     settings = saveSettings(patch);
-    hud.syncSettings(settings);
-    const boardChanged = before.board !== settings.board;
-    const modeChanged = before.level !== settings.level;
-    const seriesChanged = before.series !== settings.series;
-    if (boardChanged || modeChanged || seriesChanged) newMatch();
+    setHaptics(settings.haptics);
+    hud.syncMenu(menuState());
+    // Tahta ya da seri değişince tur ortasında kalan maç anlamını yitirir.
+    if (before.board !== settings.board || before.series !== settings.series) newMatch();
     else syncHud(true);
+  }
+
+  /** Menüden oyun başlatma: mod uygulanır ve her hâlükârda yeni maç açılır. */
+  function startGame(level) {
+    settings = saveSettings({ level });
+    started = true;
+    hud.syncMenu(menuState());
+    hud.closeWin();
+    hud.closeMenu();
+    newMatch();
   }
 
   /* ── girdi ───────────────────────────────────────────────────── */
 
   canvas.addEventListener('pointerdown', e => {
     audio.unlock();
-    if (hud.isSheetOpen()) return;
+    if (hud.isOverlayOpen()) return;
     const i = renderer.cellAt(e.clientX, e.clientY, board);
     if (i < 0) return;
     cursorVisible = false;
     play(i, false);
   }, { passive: true });
 
+  /* Klavye desteği masaüstü için sessizce açık: menüde tanıtılmıyor. */
   addEventListener('keydown', e => {
     const k = e.key;
-    if (hud.isSheetOpen()) {
-      if (k === 'Escape' && hud.dom.sheetRules.classList.contains('on') && started) {
-        hud.closeSheet('sheetRules');
+    if (hud.isOverlayOpen()) {
+      if (k === 'Escape' && hud.isMenuOpen()) {
+        if (hud.panel() !== 'home') hud.showPanel('home', -1);
+        else if (started) hud.closeMenu();
+        e.preventDefault();
       }
       return;
     }
+    if (k === 'Escape') { api.openMenu(); e.preventDefault(); return; }
+
     const cols = board.cols;
     let handled = true;
     switch (k) {
@@ -292,8 +320,8 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor, false); break;
       case 'z': case 'Z': undo(); break;
       case 'r': case 'R': newRound(true); break;
-      case 'm': case 'M': api.toggleSound(); break;
-      case '?': hud.openSheet('sheetRules'); break;
+      case 'm': case 'M': api.setSound(!settings.sound); break;
+      case '?': api.openMenu('learn'); break;
       default: handled = false;
     }
     if (handled) e.preventDefault();
@@ -306,12 +334,21 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       return { side, over, cursor: cursorVisible ? cursor : -1 };
     },
     tintRgb() { return SIDES[side].rgb; },
-    start() {
-      started = true;
-      hud.closeSheet('sheetRules');
+
+    playHuman() { startGame(AI_OFF); },
+    playAI(level) { startGame(level); },
+    resume() {
+      hud.closeWin();
+      hud.closeMenu();
+      if (over) { this.nextRound(matchIsOver()); return; }
       syncHud(true);
-      maybeAI();
     },
+    openMenu(panel = 'home') {
+      hud.syncMenu(menuState());
+      hud.closeWin();
+      hud.openMenu(panel);
+    },
+
     restartRound() { newRound(true); },
     nextRound(resetMatch) {
       if (resetMatch) { newMatch(); return; }
@@ -321,16 +358,32 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     newMatch,
     undo,
     applySettings,
-    toggleSound() {
-      const on = audio.toggle();
-      settings = saveSettings({ sound: on });
-      hud.syncSettings(settings);
-      hud.toast(on ? 'SES AÇIK' : 'SES KAPALI', 900);
+
+    setSound(on) {
+      audio.setEnabled(on);
+      settings = saveSettings({ sound: audio.enabled });
+      hud.syncMenu(menuState());
+      if (started) hud.toast(audio.enabled ? 'SES AÇIK' : 'SES KAPALI', 900);
     },
+    setHaptics(on) {
+      settings = saveSettings({ haptics: !!on });
+      setHaptics(settings.haptics);
+      hud.syncMenu(menuState());
+      if (settings.haptics) haptic(18);
+    },
+    resetStats() {
+      stats = { 1: 0, 2: 0 };
+      settings = saveSettings({ stats1: 0, stats2: 0 });
+      hud.syncMenu(menuState());
+      hud.toast('İSTATİSTİKLER SIFIRLANDI', 1100);
+    },
+
     refresh() { syncHud(); },
     boot() {
-      hud.syncSettings(settings);
+      setHaptics(settings.haptics);
+      hud.syncMenu(menuState());
       newMatch();
+      hud.openMenu('home');
     }
   };
   return api;

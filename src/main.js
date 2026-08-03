@@ -13,7 +13,7 @@ import { createHud } from './hud.js';
 import { createGame } from './game.js';
 import { loadSettings } from './storage.js';
 import { updateTweens, tween, Ease } from './anim.js';
-import { REDUCED } from './util.js';
+import { REDUCED, haptic } from './util.js';
 
 const gameCanvas = document.getElementById('game');
 const bgCanvas = document.getElementById('bg');
@@ -45,36 +45,47 @@ game = createGame({ renderer, hud, audio, canvas: gameCanvas, onLayout: layout }
 /* ── kontroller ─────────────────────────────────────────────── */
 const d = hud.dom;
 
-d.modeSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  audio.unlock();
-  game.applySettings({ level: +b.dataset.lv });
-});
-d.boardSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  game.applySettings({ board: b.dataset.val });
-});
-d.seriesSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  game.applySettings({ series: +b.dataset.val });
-});
+/* Menüdeki her dokunuşta hafif bir titreşim: dokunsal geri bildirim. */
+const tapped = fn => e => { audio.unlock(); haptic(8); fn(e); };
 
-d.btnStart.addEventListener('click', () => { audio.unlock(); game.start(); });
-d.btnRules.addEventListener('click', () => hud.openSheet('sheetRules'));
-d.btnNew.addEventListener('click', () => { hud.closeSheet('sheetWin'); game.restartRound(); });
+d.mResume.addEventListener('click', tapped(() => game.resume()));
+d.mPlay2.addEventListener('click', tapped(() => game.playHuman()));
+d.mPlayAI.addEventListener('click', tapped(() => hud.showPanel('ai', 1)));
+d.mLearn.addEventListener('click', tapped(() => hud.showPanel('learn', 1)));
+d.mSettings.addEventListener('click', tapped(() => hud.showPanel('settings', 1)));
+
+d.lvStack.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.playAI(+b.dataset.lv);
+}));
+
+for (const b of d.menu.querySelectorAll('[data-back]')) {
+  b.addEventListener('click', tapped(() => hud.showPanel('home', -1)));
+}
+
+d.boardSeg.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.applySettings({ board: b.dataset.val });
+}));
+d.seriesSeg.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.applySettings({ series: +b.dataset.val });
+}));
+d.swSound.addEventListener('click', tapped(() =>
+  game.setSound(d.swSound.getAttribute('aria-checked') !== 'true')));
+d.swHaptic.addEventListener('click', tapped(() =>
+  game.setHaptics(d.swHaptic.getAttribute('aria-checked') !== 'true')));
+d.btnResetStats.addEventListener('click', tapped(() => game.resetStats()));
+
+d.btnMenu.addEventListener('click', tapped(() => game.openMenu('home')));
+d.btnNew.addEventListener('click', tapped(() => { hud.closeWin(); game.restartRound(); }));
 d.btnUndo.addEventListener('click', () => game.undo());
-d.btnSound.addEventListener('click', () => { audio.unlock(); game.toggleSound(); });
-d.btnNext.addEventListener('click', e => {
-  hud.closeSheet('sheetWin');
+d.btnSound.addEventListener('click', tapped(() => game.setSound(!game.settings.sound)));
+d.btnNext.addEventListener('click', tapped(e => {
+  hud.closeWin();
   game.nextRound(!!e.currentTarget.dataset.reset);
-});
-d.btnSettings.addEventListener('click', () => {
-  hud.closeSheet('sheetWin');
-  hud.openSheet('sheetRules');
-});
+}));
+d.btnToMenu.addEventListener('click', tapped(() => game.openMenu('home')));
 
 /* ── ölçüm ──────────────────────────────────────────────────── */
 addEventListener('resize', layout);
@@ -179,4 +190,3 @@ if (!REDUCED) {
     onDone: () => { dock.style.transform = ''; dock.style.opacity = ''; }
   });
 }
-hud.openSheet('sheetRules');

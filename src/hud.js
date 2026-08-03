@@ -1,7 +1,7 @@
-/* NOVA · HUD — DOM tarafının tamamı burada.
+/* NOVA · HUD ve menü — DOM tarafının tamamı burada.
  * Oyun mantığı DOM'u tanımaz, HUD da kuralları tanımaz. */
 
-import { SIDES, BOARDS, SERIES, AI_OFF } from './config.js';
+import { SIDES, BOARDS, SERIES, LEVELS, AI_OFF } from './config.js';
 import { counter, tween, Ease } from './anim.js';
 import { pad2 } from './util.js';
 
@@ -18,22 +18,36 @@ export function createHud() {
     turnPill: el('turnPill'), turnWho: el('turnWho'),
     chain: el('chain'), chainN: el('chainN'),
     toast: el('toast'), live: el('live'), fps: el('fps'),
-    btnUndo: el('btnUndo'), btnNew: el('btnNew'), btnRules: el('btnRules'),
-    btnSound: el('btnSound'), btnStart: el('btnStart'), btnNext: el('btnNext'),
-    btnSettings: el('btnSettings'),
-    modeSeg: el('modeSeg'), boardSeg: el('boardSeg'), seriesSeg: el('seriesSeg'),
-    sheetRules: el('sheetRules'), sheetWin: el('sheetWin'),
+
+    btnUndo: el('btnUndo'), btnNew: el('btnNew'),
+    btnSound: el('btnSound'), btnMenu: el('btnMenu'),
+
+    menu: el('menu'),
+    mResume: el('mResume'), mResumeT: el('mResumeT'), mResumeSub: el('mResumeSub'),
+    mPlay2: el('mPlay2'), mPlayAI: el('mPlayAI'), mAISub: el('mAISub'),
+    mLearn: el('mLearn'), mSettings: el('mSettings'), mSetSub: el('mSetSub'),
+    menuFoot: el('menuFoot'), lvStack: el('lvStack'),
+    boardSeg: el('boardSeg'), seriesSeg: el('seriesSeg'),
+    swSound: el('swSound'), swHaptic: el('swHaptic'),
+    btnResetStats: el('btnResetStats'),
+
+    sheetWin: el('sheetWin'), btnNext: el('btnNext'), btnToMenu: el('btnToMenu'),
     winKick: el('winKick'), winTitle: el('winTitle'),
     winTally: el('winTally'), winStreak: el('winStreak')
   };
 
+  const panels = {};
+  for (const node of dom.menu.querySelectorAll('.panel')) panels[node.dataset.panel] = node;
+  let panelName = 'home';
+
   const shown = { 1: 0, 2: 0 };
   const handles = { 1: null, 2: null };
   let chainTween = null;
+  let panelTween = null;
   let toastTimer = null;
   let lastSaid = '';
 
-  /* Tahta ve seri seçicileri config'ten üretilir: seçenek eklemek tek satır. */
+  /* Seçenek satırları config'ten üretilir: yeni seçenek eklemek tek satır. */
   function fillSeg(node, items, valueKey, labelKey) {
     node.innerHTML = '';
     for (const it of items) {
@@ -47,10 +61,24 @@ export function createHud() {
   fillSeg(dom.boardSeg, BOARDS, 'key', 'label');
   fillSeg(dom.seriesSeg, SERIES, 'key', 'label');
 
-  function markSeg(node, attr, value) {
-    for (const b of node.children) {
-      b.classList.toggle('on', b.dataset[attr] === String(value));
-    }
+  /* Zorluk kartları: başlık + tek satır tanım + üç noktalı güç göstergesi. */
+  dom.lvStack.innerHTML = '';
+  for (const lv of LEVELS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mbtn';
+    b.dataset.lv = String(lv.level);
+    b.innerHTML =
+      `<span class="glyph"><span class="meter">${
+        LEVELS.map((_, i) => `<i class="${i <= lv.level ? 'on' : ''}"></i>`).join('')
+      }</span></span>` +
+      `<span class="txt"><span class="t">${lv.label}</span><span class="s">${lv.desc.toUpperCase()}</span></span>` +
+      '<span class="chev" aria-hidden="true">›</span>';
+    dom.lvStack.appendChild(b);
+  }
+
+  function markSeg(node, value) {
+    for (const b of node.children) b.classList.toggle('on', b.dataset.val === String(value));
   }
 
   function setCores(p, value) {
@@ -61,21 +89,92 @@ export function createHud() {
     shown[p] = value;
   }
 
+  function labelOf(list, key) {
+    const hit = list.find(x => String(x.key) === String(key));
+    return hit ? hit.label : String(key);
+  }
+
   return {
     dom,
 
-    /** Ayar panelindeki seçili düğmeleri tazeler. */
-    syncSettings(settings) {
-      markSeg(dom.modeSeg, 'lv', settings.level);
-      markSeg(dom.boardSeg, 'val', settings.board);
-      markSeg(dom.seriesSeg, 'val', settings.series);
-      dom.aiBadge.hidden = settings.level === AI_OFF;
-      dom.btnSound.textContent = settings.sound ? '♪' : '♪̸';
-      dom.btnSound.classList.toggle('off', !settings.sound);
-      dom.btnSound.setAttribute('aria-pressed', String(settings.sound));
-      const s = SERIES.find(x => x.key === settings.series);
-      dom.seriesLbl.textContent = s ? s.label : 'İLK ' + settings.series;
+    /* ── menü ───────────────────────────────────────────────── */
+
+    showPanel(name, dir = 1) {
+      if (!panels[name]) return;
+      for (const key of Object.keys(panels)) panels[key].hidden = key !== name;
+      panelName = name;
+      dom.menu.scrollTop = 0;
+      const node = panels[name];
+      if (panelTween) panelTween.cancel();
+      panelTween = tween({
+        from: 0, to: 1, dur: .3, ease: Ease.outQuint,
+        onUpdate: v => {
+          node.style.opacity = String(v);
+          node.style.transform = `translateX(${(1 - v) * 22 * dir}px)`;
+        },
+        onDone: () => { node.style.transform = ''; }
+      });
     },
+
+    openMenu(name = 'home') {
+      dom.menu.classList.add('on');
+      this.showPanel(name, 1);
+      const items = panels[name].querySelectorAll('.mbtn, .row, .learn li');
+      items.forEach((node, i) => {
+        tween({
+          from: 0, to: 1, dur: .34, delay: .04 + i * .045, ease: Ease.outQuint,
+          onUpdate: v => {
+            node.style.opacity = String(v);
+            node.style.transform = `translateY(${(1 - v) * 14}px)`;
+          },
+          onDone: () => { node.style.transform = ''; node.style.opacity = ''; }
+        });
+      });
+    },
+
+    closeMenu() { dom.menu.classList.remove('on'); },
+    isMenuOpen() { return dom.menu.classList.contains('on'); },
+    panel() { return panelName; },
+    isOverlayOpen() {
+      return dom.menu.classList.contains('on') || dom.sheetWin.classList.contains('on');
+    },
+
+    /** Menü ve ayar ekranını mevcut duruma göre tazeler. */
+    syncMenu(state) {
+      /* Tur bittiyse aynı düğme seriyi sürdürür: menü çıkmaz sokak olmasın. */
+      dom.mResume.hidden = !state.started;
+      dom.mResumeT.textContent = state.over
+        ? (state.matchOver ? 'YENİ MAÇ' : 'SONRAKİ TUR')
+        : 'DEVAM ET';
+      dom.mResumeSub.textContent = state.over
+        ? `MAÇ ${state.wins[1]}—${state.wins[2]}`
+        : `TUR ${pad2(state.round)} · MAÇ ${state.wins[1]}—${state.wins[2]}`;
+      dom.mAISub.textContent = state.level === AI_OFF
+        ? 'ZORLUK SEÇ'
+        : (LEVELS[state.level] ? LEVELS[state.level].label : 'ZORLUK SEÇ');
+      dom.mSetSub.textContent =
+        `${labelOf(BOARDS, state.board)} · ${labelOf(SERIES, state.series)}`;
+      dom.menuFoot.textContent = (state.stats[1] || state.stats[2])
+        ? `TOPLAM ${state.stats[1]} — ${state.stats[2]}`
+        : '';
+
+      for (const b of dom.lvStack.children) {
+        b.classList.toggle('sel', +b.dataset.lv === state.level);
+        b.style.setProperty('--c', 'var(--p2)');
+      }
+      markSeg(dom.boardSeg, state.board);
+      markSeg(dom.seriesSeg, state.series);
+      dom.swSound.setAttribute('aria-checked', String(state.sound));
+      dom.swHaptic.setAttribute('aria-checked', String(state.haptics));
+
+      dom.aiBadge.hidden = state.level === AI_OFF;
+      dom.btnSound.textContent = state.sound ? '♪' : '♪̸';
+      dom.btnSound.classList.toggle('off', !state.sound);
+      dom.btnSound.setAttribute('aria-pressed', String(state.sound));
+      dom.seriesLbl.textContent = labelOf(SERIES, state.series);
+    },
+
+    /* ── oyun içi HUD ───────────────────────────────────────── */
 
     sync(state) {
       const [a, b] = state.counts;
@@ -154,10 +253,9 @@ export function createHud() {
       });
     },
 
-    openSheet(id) {
-      const s = dom[id];
-      s.classList.add('on');
-      const card = s.querySelector('.card');
+    openWin() {
+      dom.sheetWin.classList.add('on');
+      const card = dom.sheetWin.querySelector('.card');
       tween({
         from: 0, to: 1, dur: .45, ease: Ease.outQuint,
         onUpdate: v => {
@@ -167,8 +265,7 @@ export function createHud() {
       });
     },
 
-    closeSheet(id) { dom[id].classList.remove('on'); },
-    isSheetOpen() { return dom.sheetRules.classList.contains('on') || dom.sheetWin.classList.contains('on'); },
+    closeWin() { dom.sheetWin.classList.remove('on'); },
 
     showWin({ winner, matchOver, wins, streak }) {
       document.documentElement.style.setProperty('--cur', SIDES[winner].css);
