@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07061A">
+<meta name="description" content="NOVA · Kritik Kütle — tek telefonda iki oyunculu zincirleme patlama oyunu.">
+<title>NOVA · Kritik Kütle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307061A'/%3E%3Ccircle cx='25' cy='27' r='11' fill='%23FF3B5C'/%3E%3Ccircle cx='40' cy='39' r='11' fill='%233DF5C0' fill-opacity='.9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* NOVA · Kritik Kütle */
+
+:root{
+  --void:#07061A;
+  --bone:#EAE7FA;
+  --dim:#7C77A3;
+  --hair:rgba(255,255,255,.09);
+  --p1:#FF3B5C;
+  --p2:#3DF5C0;
+  --cur:var(--p1);
+  --pad:14px;
+  --tool:46px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overscroll-behavior:none;background:var(--void)}
+body{
+  font-family:'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color:var(--bone);overflow:hidden;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
+}
+canvas{position:fixed;inset:0;display:block}
+#bg{width:100%;height:100%;z-index:0}
+#game{width:100%;height:100%;z-index:1}
+.grain{
+  position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.sr{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;
+}
+
+/* ══ HUD ══ */
+.ui{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  display:flex;flex-direction:column;
+  padding:calc(var(--pad) + env(safe-area-inset-top)) var(--pad) calc(var(--pad) + env(safe-area-inset-bottom));
+  gap:10px;
+  width:min(100vw,480px);left:50%;transform:translateX(-50%);
+}
+.hud{display:grid;grid-template-columns:1fr auto 1fr;gap:9px;align-items:stretch}
+.pod{
+  --c:var(--p1);
+  position:relative;overflow:hidden;border-radius:15px;padding:10px 12px 11px;
+  background:linear-gradient(165deg,rgba(255,255,255,.075),rgba(255,255,255,.018));
+  border:1px solid var(--hair);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13), 0 18px 34px -26px #000;
+  transition:border-color .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s;
+}
+.pod.live{
+  border-color:color-mix(in srgb,var(--c) 50%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 26px -8px color-mix(in srgb,var(--c) 60%,transparent);
+}
+.pod::after{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c),transparent);
+  opacity:0;transition:opacity .35s;
+}
+.pod.live::after{opacity:.9}
+.pod.p2{text-align:right}
+.pname{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:12px;letter-spacing:.2em;
+  color:var(--c);line-height:1;
+}
+.pcores{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:29px;line-height:1;
+  margin-top:7px;font-variant-numeric:tabular-nums;
+  color:var(--bone);
+}
+.pips{display:flex;gap:4px;margin-top:7px}
+.pod.p2 .pips{justify-content:flex-end}
+.pip{width:100%;max-width:22px;height:3px;border-radius:2px;background:rgba(255,255,255,.13);transition:background .3s,box-shadow .3s}
+.pip.on{background:var(--c);box-shadow:0 0 9px -1px var(--c)}
+.mid{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  padding:0 4px;min-width:56px;
+}
+.mid .rnd{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.06em}
+.mid .lbl{font-size:8.5px;letter-spacing:.22em;color:var(--dim);text-align:center}
+
+/* üstünlük çubuğu */
+.tug{position:relative;height:5px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.tug i,.tug u,.tug b{transition:width .45s cubic-bezier(.2,.8,.2,1),left .45s cubic-bezier(.2,.8,.2,1)}
+.tug i{position:absolute;top:0;bottom:0;left:0;width:50%;background:linear-gradient(90deg,var(--p1),color-mix(in srgb,var(--p1) 55%,transparent));border-radius:4px}
+.tug u{position:absolute;top:0;bottom:0;right:0;left:50%;background:linear-gradient(270deg,var(--p2),color-mix(in srgb,var(--p2) 55%,transparent));border-radius:4px}
+.tug b{position:absolute;top:-3px;left:50%;width:2px;height:11px;background:#fff;border-radius:2px;transform:translateX(-50%);box-shadow:0 0 10px #fff}
+
+#stage{flex:1;position:relative;min-height:0;pointer-events:none}
+.chain{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);
+  text-align:center;opacity:0;pointer-events:none;will-change:transform,opacity;
+}
+.chain em{
+  display:block;font-family:'Syne',sans-serif;font-weight:800;font-style:normal;
+  font-size:58px;line-height:.86;color:var(--cur);
+  text-shadow:0 0 34px color-mix(in srgb,var(--cur) 75%,transparent);
+}
+.chain span{display:block;font-size:10px;letter-spacing:.42em;color:var(--bone);opacity:.65;margin-top:6px}
+
+.toast{
+  position:absolute;left:50%;bottom:6px;transform:translate(-50%,10px);
+  padding:7px 13px;border-radius:11px;white-space:nowrap;
+  background:rgba(12,10,34,.86);border:1px solid var(--hair);
+  font-size:10px;letter-spacing:.18em;color:var(--bone);
+  opacity:0;transition:opacity .25s,transform .25s;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ══ alt konsol ══ */
+.dock{display:flex;gap:8px;align-items:center;pointer-events:auto}
+.turn{
+  --c:var(--p1);flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  padding:12px 14px;border-radius:15px;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--c) 20%,rgba(255,255,255,.03)),rgba(255,255,255,.03));
+  border:1px solid color-mix(in srgb,var(--c) 34%,transparent);
+  transition:background .4s,border-color .4s;
+}
+.turn .bead{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c);flex:none}
+.turn .who{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--c);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.turn .sub{font-size:9px;letter-spacing:.2em;color:var(--dim);margin-left:auto;flex:none}
+.tool{
+  width:var(--tool);height:var(--tool);flex:none;border-radius:14px;cursor:pointer;
+  background:rgba(255,255,255,.045);border:1px solid var(--hair);color:var(--bone);
+  font-family:'Space Grotesk',sans-serif;font-size:15px;
+  display:grid;place-items:center;transition:transform .12s,background .2s,border-color .2s,opacity .2s;
+}
+.tool:active{transform:scale(.9);background:rgba(255,255,255,.1)}
+.tool.off{color:#4C4870}
+.tool:disabled{opacity:.32;cursor:default}
+.tool:focus-visible,.cta:focus-visible,.seg button:focus-visible{outline:2px solid var(--cur);outline-offset:3px}
+.ai{
+  display:inline-block;margin-left:5px;padding:2px 5px;border-radius:5px;vertical-align:1px;
+  font-family:'Space Grotesk',sans-serif;font-size:8px;letter-spacing:.14em;font-weight:700;
+  background:color-mix(in srgb,var(--c) 26%,transparent);color:var(--c);
+}
+.ai[hidden]{display:none}
+
+.segwrap{margin-top:16px;position:relative}
+.seglbl{font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:8px}
+.seg{display:grid;gap:5px;grid-auto-flow:column;grid-auto-columns:1fr}
+.seg button{
+  padding:11px 3px;border-radius:11px;cursor:pointer;
+  background:rgba(255,255,255,.045);border:1px solid var(--hair);color:var(--dim);
+  font-family:'Space Grotesk',sans-serif;font-size:9.5px;letter-spacing:.06em;font-weight:500;
+  transition:color .2s,background .2s,border-color .2s,transform .12s;
+}
+.seg button:active{transform:scale(.94)}
+.seg button.on{color:#0B0820;background:var(--p2);border-color:transparent;font-weight:700}
+.seg button[data-lv="-1"].on{background:var(--bone)}
+
+/* ══ paneller ══ */
+.sheet{
+  position:fixed;inset:0;z-index:9;display:none;align-items:flex-start;justify-content:center;
+  padding:22px;background:rgba(5,4,16,.82);overflow-y:auto;
+}
+.sheet.on{display:flex}
+.card{
+  /* auto kenar boşluğu: sığdığında ortalar, sığmadığında üstten kırpmaz */
+  margin:auto;
+  width:min(100%,392px);border-radius:22px;padding:26px 22px 22px;position:relative;overflow:hidden;
+  background:linear-gradient(170deg,#171233,#0C0A22);
+  border:1px solid var(--hair);
+  box-shadow:0 40px 90px -40px #000, inset 0 1px 0 rgba(255,255,255,.12);
+}
+.card .halo{position:absolute;top:-130px;left:50%;width:340px;height:260px;transform:translateX(-50%);
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--cur) 55%,transparent),transparent);opacity:.5;pointer-events:none}
+.kicker{font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:9px;position:relative}
+.card h1{font-family:'Syne',sans-serif;font-weight:800;font-size:27px;letter-spacing:.02em;line-height:1.08;position:relative}
+.card h1 .big{display:block;font-size:38px;color:var(--cur);text-shadow:0 0 40px color-mix(in srgb,var(--cur) 60%,transparent)}
+.tally{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;letter-spacing:.2em;color:var(--dim);margin-top:12px;position:relative}
+.streak{font-size:10.5px;letter-spacing:.16em;color:var(--dim);margin-top:7px;position:relative}
+.steps{list-style:none;display:flex;flex-direction:column;gap:12px;margin-top:18px;position:relative}
+.steps li{display:flex;gap:12px;font-size:12.5px;line-height:1.55;color:#B6B1D8}
+.steps i{font-family:'Syne',sans-serif;font-style:normal;font-weight:800;font-size:11px;color:var(--cur);padding-top:3px;flex:none;width:16px}
+.steps strong{color:var(--bone);font-weight:700}
+.hint{font-size:10px;letter-spacing:.1em;color:var(--dim);margin-top:16px;line-height:1.7;position:relative}
+.hint kbd{
+  font-family:'Space Grotesk',sans-serif;font-size:9.5px;padding:2px 5px;border-radius:5px;
+  background:rgba(255,255,255,.07);border:1px solid var(--hair);color:var(--bone);
+}
+.cta{
+  width:100%;margin-top:18px;padding:15px;border-radius:14px;cursor:pointer;position:relative;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:13px;letter-spacing:.16em;color:#0B0820;
+  background:linear-gradient(100deg,var(--cur),color-mix(in srgb,var(--cur) 62%,#fff));
+  border:0;transition:transform .12s;
+}
+.cta:active{transform:scale(.97)}
+.ghost{
+  width:100%;margin-top:9px;padding:12px;border-radius:12px;cursor:pointer;
+  background:transparent;border:1px solid var(--hair);color:var(--dim);
+  font-family:'Space Grotesk',sans-serif;font-size:10px;letter-spacing:.2em;
+}
+.ghost:active{transform:scale(.98)}
+
+#fps{
+  position:fixed;right:9px;bottom:calc(6px + env(safe-area-inset-bottom));z-index:8;
+  font-size:9px;letter-spacing:.12em;color:#4A4670;pointer-events:none;font-variant-numeric:tabular-nums;
+}
+#fps[hidden]{display:none}
+
+/* Dar telefonlarda dört araç düğmesi + sıra rozeti aynı satıra sığmalı. */
+@media (max-width:430px){
+  :root{--tool:44px}
+  .turn .sub{display:none}
+}
+@media (max-width:379px){
+  :root{--tool:40px;--pad:11px}
+  .turn{padding:11px}
+  .turn .who{font-size:12.5px}
+  .pcores{font-size:26px}
+}
+/* Kısa ekranlarda kural kartını sıkıştır. */
+@media (max-height:760px){
+  .card{padding:20px 18px 18px}
+  .card h1{font-size:23px}
+  .card h1 .big{font-size:31px}
+  .steps{gap:9px;margin-top:14px}
+  .steps li{font-size:11.5px;line-height:1.45}
+  .segwrap{margin-top:12px}
+  .hint{margin-top:12px}
+  .cta{margin-top:14px;padding:13px}
+}
+@media (prefers-reduced-motion:reduce){
+  .chain,.pod,.turn,.tug i,.tug u,.tug b,.toast{transition-duration:.01ms}
+}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<canvas id="game" role="application" aria-label="Kritik Kütle tahtası. Ok tuşlarıyla gez, boşluk ile çekirdek bırak."></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="ui">
+  <div class="hud">
+    <div class="pod p1 live" id="pod1" style="--c:var(--p1)">
+      <div class="pname">MAGMA</div>
+      <div class="pcores" id="core1">00</div>
+      <div class="pips" id="pips1"></div>
+    </div>
+    <div class="mid">
+      <div class="lbl">TUR</div>
+      <div class="rnd" id="roundNo">01</div>
+      <div class="lbl" id="seriesLbl">İLK 3</div>
+    </div>
+    <div class="pod p2" id="pod2" style="--c:var(--p2)">
+      <div class="pname">AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
+      <div class="pcores" id="core2">00</div>
+      <div class="pips" id="pips2"></div>
+    </div>
+  </div>
+
+  <div class="tug" aria-hidden="true"><i id="tugA"></i><u id="tugB"></u><b id="tugKnob"></b></div>
+
+  <div id="stage">
+    <div class="chain" id="chain" aria-hidden="true"><em id="chainN">×2</em><span>ZİNCİR</span></div>
+    <div class="toast" id="toast" aria-hidden="true"></div>
+  </div>
+
+  <div class="dock">
+    <div class="turn" id="turnPill" style="--c:var(--p1)">
+      <span class="bead"></span>
+      <span class="who" id="turnWho">MAGMA</span>
+      <span class="sub">SIRASI</span>
+    </div>
+    <button class="tool" id="btnUndo" aria-label="Son hamleyi geri al" disabled>↶</button>
+    <button class="tool" id="btnNew" aria-label="Turu yeniden başlat">⟲</button>
+    <button class="tool" id="btnRules" aria-label="Kurallar ve ayarlar">?</button>
+    <button class="tool" id="btnSound" aria-label="Sesi aç kapat">♪</button>
+  </div>
+</div>
+
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+
+<div class="sheet on" id="sheetRules">
+  <div class="card">
+    <div class="halo"></div>
+    <div class="kicker">TEK TELEFON · İKİ OYUNCU · SIRAYLA</div>
+    <h1>NOVA<span class="big">KRİTİK KÜTLE</span></h1>
+    <ul class="steps">
+      <li><i>01</i><span>Boş bir hücreye ya da <strong>kendi rengindeki</strong> bir hücreye dokun; oraya bir çekirdek düşer.</span></li>
+      <li><i>02</i><span>Her hücrenin taşıma sınırı var: <strong>köşe 2, kenar 3, orta 4</strong>. Boş hücrelerde bu sayı soluk görünür.</span></li>
+      <li><i>03</i><span>Sınıra ulaşan hücre <strong>nova olur</strong>: çekirdekleri dört komşuya savrulur ve o komşular senin rengine döner.</span></li>
+      <li><i>04</i><span>Savrulan çekirdek komşuyu da doldurursa <strong>zincir</strong> büyür. Tek dokunuş tahtayı devirebilir.</span></li>
+      <li><i>05</i><span>Rakibin son çekirdeğini yutan turu alır. <strong>Seriyi alan maçı alır.</strong></span></li>
+    </ul>
+
+    <div class="segwrap">
+      <div class="seglbl">RAKİP</div>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-lv="-1">2 OYUNCU</button>
+        <button type="button" data-lv="0">KOLAY</button>
+        <button type="button" data-lv="1">NORMAL</button>
+        <button type="button" data-lv="2">ZOR</button>
+      </div>
+    </div>
+    <div class="segwrap">
+      <div class="seglbl">TAHTA</div>
+      <div class="seg" id="boardSeg"></div>
+    </div>
+    <div class="segwrap">
+      <div class="seglbl">SERİ</div>
+      <div class="seg" id="seriesSeg"></div>
+    </div>
+
+    <p class="hint">
+      Klavye: <kbd>← ↑ → ↓</kbd> gez · <kbd>boşluk</kbd> bırak · <kbd>Z</kbd> geri al · <kbd>R</kbd> yeni tur · <kbd>M</kbd> ses
+    </p>
+    <button class="cta" id="btnStart">BAŞLA</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheetWin">
+  <div class="card">
+    <div class="halo"></div>
+    <div class="kicker" id="winKick">TUR TAMAMLANDI</div>
+    <h1 id="winTitle">MAGMA<span class="big">TURU ALDI</span></h1>
+    <div class="tally" id="winTally">MAÇ 1 — 0</div>
+    <div class="streak" id="winStreak"></div>
+    <button class="cta" id="btnNext">SONRAKİ TUR</button>
+    <button class="ghost" id="btnSettings">AYARLAR</button>
+  </div>
+</div>
+
+<div id="fps" hidden></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ── src/config.js ── */
+/* NOVA · Kritik Kütle — sabitler ve ayar tanımları */
+
+const SIDES = {
+  1: { id: 1, name: 'MAGMA',  rgb: [255, 59, 92],  css: '#FF3B5C' },
+  2: { id: 2, name: 'AURORA', rgb: [61, 245, 192], css: '#3DF5C0' }
+};
+
+/** Çekirdeğin komşuya yolculuk süresi (ms). Zincir ritmini bu belirler. */
+const TRAVEL_MS = 175;
+/** Komşuya düştükten sonraki nefes payı (ms). */
+const SETTLE_MS = 55;
+
+/** Tahta seçenekleri — hepsi dikey telefon oranına göre ayarlı. */
+const BOARDS = [
+  { key: 's', label: '5×4', rows: 5, cols: 4 },
+  { key: 'm', label: '6×5', rows: 6, cols: 5 },
+  { key: 'l', label: '8×6', rows: 8, cols: 6 }
+];
+
+/** Maç uzunluğu (kaç tur kazanan maçı alır). */
+const SERIES = [
+  { key: 1, label: 'TEK' },
+  { key: 3, label: 'İLK 3' },
+  { key: 5, label: 'İLK 5' }
+];
+
+/** AI seviyeleri. -1 = iki oyuncu, tek telefon. */
+const AI_OFF = -1;
+const LEVELS = [
+  { level: 0, label: 'KOLAY',  depth: 1, width: 12, noise: 0.42, budget: 30  },
+  { level: 1, label: 'NORMAL', depth: 2, width: 10, noise: 0.10, budget: 60  },
+  { level: 2, label: 'ZOR',    depth: 4, width: 8,  noise: 0.00, budget: 220 }
+];
+
+/** AI hangi tarafı oynar. */
+const AI_SIDE = 2;
+
+const DEFAULTS = {
+  level: AI_OFF,
+  board: 'm',
+  series: 3,
+  sound: true
+};
+
+const STORE_KEY = 'nova.kritikkutle.v1';
+
+
+/* ── src/util.js ── */
+/* NOVA · ortak küçük yardımcılar */
+
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pad2 = v => String(v).padStart(2, '0');
+
+const REDUCED = typeof matchMedia === 'function'
+  ? matchMedia('(prefers-reduced-motion: reduce)').matches
+  : false;
+
+/** Titreşim: desteklenmeyen ya da hareket azaltılmış cihazda sessizce atlanır. */
+function haptic(ms) {
+  if (REDUCED) return;
+  try { navigator.vibrate && navigator.vibrate(ms); } catch { /* yoksay */ }
+}
+
+
+/* ── src/sprites.js ── */
+/* NOVA · ön-render sprite atlası
+ *
+ * shadowBlur / filter kullanılmaz: her parıltı bir kez off-screen canvas'a
+ * çizilir, sonra sadece drawImage ile basılır. Mobil GPU'da fark ~10 kat.
+ */
+
+
+
+
+function padCanvas(size) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  return c;
+}
+
+function makeOrb(rgb, mode) {
+  const S = 128, c = padCanvas(S), g = c.getContext('2d'), h = S / 2;
+  const gr = g.createRadialGradient(h, h, 0, h, h, h);
+  gr.addColorStop(0, rgba(rgb, .85));
+  gr.addColorStop(.22, rgba(rgb, .42));
+  gr.addColorStop(.55, rgba(rgb, .10));
+  gr.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  g.globalCompositeOperation = 'lighter';
+
+  if (mode === 'star') {                    // MAGMA: dört kollu korona
+    g.translate(h, h);
+    for (let i = 0; i < 4; i++) {
+      g.rotate(Math.PI / 2);
+      const lg = g.createLinearGradient(0, 0, 0, -h);
+      lg.addColorStop(0, rgba(rgb, .55));
+      lg.addColorStop(1, rgba(rgb, 0));
+      g.fillStyle = lg;
+      g.beginPath(); g.moveTo(-5, 0); g.lineTo(0, -h); g.lineTo(5, 0); g.closePath(); g.fill();
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+  } else {                                  // AURORA: hale halkası
+    g.strokeStyle = rgba(rgb, .5); g.lineWidth = 2.4;
+    g.beginPath(); g.arc(h, h, S * .3, 0, Math.PI * 2); g.stroke();
+  }
+
+  const core = g.createRadialGradient(h - 6, h - 7, 1, h, h, S * .19);
+  core.addColorStop(0, '#fff');
+  core.addColorStop(.42, rgba(rgb, 1));
+  core.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = core;
+  g.beginPath(); g.arc(h, h, S * .19, 0, Math.PI * 2); g.fill();
+  return c;
+}
+
+function makeSpark(rgb) {
+  const S = 64, c = padCanvas(S), g = c.getContext('2d'), h = S / 2;
+  const gr = g.createRadialGradient(h, h, 0, h, h, h);
+  gr.addColorStop(0, '#fff');
+  gr.addColorStop(.25, rgba(rgb, .9));
+  gr.addColorStop(.6, rgba(rgb, .22));
+  gr.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  return c;
+}
+
+function makeTint(rgb) {
+  const S = 96, c = padCanvas(S), g = c.getContext('2d'), h = S / 2;
+  const gr = g.createRadialGradient(h, h, 0, h, h, h);
+  gr.addColorStop(0, rgba(rgb, .30));
+  gr.addColorStop(.6, rgba(rgb, .08));
+  gr.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  return c;
+}
+
+function makeRing(rgb) {
+  const S = 128, c = padCanvas(S), g = c.getContext('2d'), h = S / 2;
+  g.strokeStyle = rgba(rgb, .85); g.lineWidth = 3; g.setLineDash([9, 9]);
+  g.beginPath(); g.arc(h, h, S * .40, 0, Math.PI * 2); g.stroke();
+  return c;
+}
+
+function makeCursor() {
+  const S = 128, c = padCanvas(S), g = c.getContext('2d'), m = 10, r = 26;
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 4; g.lineCap = 'round';
+  const corners = [[m, m, 1, 1], [S - m, m, -1, 1], [m, S - m, 1, -1], [S - m, S - m, -1, -1]];
+  for (const [x, y, dx, dy] of corners) {
+    g.beginPath();
+    g.moveTo(x + dx * r, y);
+    g.lineTo(x, y);
+    g.lineTo(x, y + dy * r);
+    g.stroke();
+  }
+  return c;
+}
+
+function makeDigit(n) {
+  const S = 64, c = padCanvas(S), g = c.getContext('2d');
+  g.font = '700 34px Syne, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(255,255,255,.13)';
+  g.fillText(String(n), S / 2, S / 2 + 1);
+  return c;
+}
+
+function buildSprites() {
+  const bySide = {};
+  for (const k of [1, 2]) {
+    bySide[k] = {
+      orb: makeOrb(SIDES[k].rgb, k === 1 ? 'star' : 'ring'),
+      spark: makeSpark(SIDES[k].rgb),
+      tint: makeTint(SIDES[k].rgb),
+      ring: makeRing(SIDES[k].rgb)
+    };
+  }
+  return {
+    side: bySide,
+    digit: { 2: makeDigit(2), 3: makeDigit(3), 4: makeDigit(4) },
+    cursor: makeCursor()
+  };
+}
+
+
+/* ── src/renderer.js ── */
+/* NOVA · canvas çizimi, parçacıklar ve kamera
+ *
+ * Tüm parlama efektleri sprites.js'teki hazır atlastan drawImage ile basılır.
+ * Parçacıklar sabit boyutlu tipli dizilerde tutulur: kare başına sıfır tahsis,
+ * dolayısıyla çöp toplayıcı zincir ortasında devreye girip takılma yapmaz.
+ */
+
+
+
+
+
+const POOL = 720;
+
+function createRenderer(canvas) {
+  const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+  const SPR = buildSprites();
+
+  /* parçacık havuzu */
+  const px = new Float32Array(POOL), py = new Float32Array(POOL);
+  const pvx = new Float32Array(POOL), pvy = new Float32Array(POOL);
+  const plife = new Float32Array(POOL), pmax = new Float32Array(POOL);
+  const psize = new Float32Array(POOL), pside = new Uint8Array(POOL);
+  let head = 0;
+
+  const comets = [];
+  const waves = [];
+
+  let fxPop = new Float32Array(0), fxGlow = new Float32Array(0);
+  let cell = 60, bx = 0, by = 0, cols = 5, rows = 6;
+  let vw = 0, vh = 0, dpr = 1;
+  let shakeAmt = 0, shakeX = 0, shakeY = 0;
+  let flashAmt = 0, flashSide = 1;
+
+  const quality = { parts: 1, shake: 1 };
+
+  const cxOf = i => bx + ((i % cols) + .5) * cell;
+  const cyOf = i => by + (((i / cols) | 0) + .5) * cell;
+
+  function emit(x, y, vx, vy, life, size, side) {
+    const i = head; head = (head + 1) % POOL;
+    px[i] = x; py[i] = y; pvx[i] = vx; pvy[i] = vy;
+    plife[i] = life; pmax[i] = life; psize[i] = size; pside[i] = side;
+  }
+
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+
+  return {
+    quality,
+    get cell() { return cell; },
+
+    /** Tahta ölçüsü değiştiğinde efekt tamponları da yeniden boyutlanır. */
+    resizeFor(board) {
+      if (fxPop.length !== board.size) {
+        fxPop = new Float32Array(board.size);
+        fxGlow = new Float32Array(board.size);
+      }
+      rows = board.rows; cols = board.cols;
+    },
+
+    layout(rect, board, deviceRatio, width, height) {
+      dpr = deviceRatio;
+      vw = width; vh = height;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      this.resizeFor(board);
+      cell = Math.max(26, Math.min((rect.width - 8) / board.cols, (rect.height - 8) / board.rows));
+      bx = rect.left + (rect.width - cell * board.cols) / 2;
+      by = rect.top + (rect.height - cell * board.rows) / 2;
+    },
+
+    /** Ekran koordinatından hücre indisi; tahtanın dışıysa -1. */
+    cellAt(x, y, board) {
+      const c = Math.floor((x - bx) / cell);
+      const r = Math.floor((y - by) / cell);
+      if (r < 0 || r >= board.rows || c < 0 || c >= board.cols) return -1;
+      return r * board.cols + c;
+    },
+
+    center(i) { return { x: cxOf(i), y: cyOf(i) }; },
+
+    pop(i) { if (i < fxPop.length) { fxPop[i] = 1; fxGlow[i] = 1; } },
+
+    burst(i, side, power) {
+      const x = cxOf(i), y = cyOf(i);
+      const n = Math.round(power * 16 * quality.parts);
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * 6.283;
+        const sp = (55 + Math.random() * 230) * (.6 + power * .3);
+        emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp,
+          .34 + Math.random() * .42, cell * (.07 + Math.random() * .13), side);
+      }
+    },
+
+    burstAt(x, y, side, power) {
+      const n = Math.round(power * 16 * quality.parts);
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * 6.283;
+        const sp = (55 + Math.random() * 230) * (.6 + power * .3);
+        emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp,
+          .34 + Math.random() * .42, cell * (.07 + Math.random() * .13), side);
+      }
+    },
+
+    wave(i, side, dur) {
+      waves.push({ x: cxOf(i), y: cyOf(i), t: 0, dur, p: side });
+    },
+
+    /** Patlayan hücreden komşularına savrulan çekirdek izleri. */
+    launch(i, board, side, durSec) {
+      const nb = board.nbrs[i];
+      for (let m = 0; m < nb.length; m++) {
+        comets.push({
+          x0: cxOf(i), y0: cyOf(i), x1: cxOf(nb[m]), y1: cyOf(nb[m]),
+          t: 0, dur: durSec, p: side
+        });
+      }
+    },
+
+    kick(a) { shakeAmt = Math.min(shakeAmt + a * quality.shake, 16); },
+    flash(side, v) { flashSide = side; flashAmt = Math.max(flashAmt, v); },
+
+    clearFx() {
+      comets.length = 0;
+      waves.length = 0;
+      plife.fill(0);
+      fxPop.fill(0);
+      fxGlow.fill(0);
+      shakeAmt = 0; flashAmt = 0;
+    },
+
+    step(dt) {
+      for (let i = 0; i < POOL; i++) {
+        if (plife[i] <= 0) continue;
+        plife[i] -= dt;
+        px[i] += pvx[i] * dt;
+        py[i] += pvy[i] * dt;
+        const drag = 1 - 2.6 * dt;
+        pvx[i] *= drag; pvy[i] *= drag;
+      }
+      for (let i = comets.length - 1; i >= 0; i--) {
+        const m = comets[i];
+        m.t += dt;
+        if (Math.random() < .55 * quality.parts) {
+          const k = m.t / m.dur, e = k < 1 ? 1 - (1 - k) * (1 - k) : 1;
+          emit(m.x0 + (m.x1 - m.x0) * e, m.y0 + (m.y1 - m.y0) * e,
+            (Math.random() - .5) * 40, (Math.random() - .5) * 40, .22, cell * .09, m.p);
+        }
+        if (m.t >= m.dur) comets.splice(i, 1);
+      }
+      for (let i = waves.length - 1; i >= 0; i--) {
+        waves[i].t += dt;
+        if (waves[i].t >= waves[i].dur) waves.splice(i, 1);
+      }
+      for (let i = 0; i < fxPop.length; i++) {
+        fxPop[i] += (0 - fxPop[i]) * Math.min(1, dt * 9);
+        fxGlow[i] += (0 - fxGlow[i]) * Math.min(1, dt * 5);
+      }
+      shakeAmt *= Math.pow(.0016, dt);
+      shakeX = (Math.random() - .5) * shakeAmt;
+      shakeY = (Math.random() - .5) * shakeAmt;
+      flashAmt *= Math.pow(.004, dt);
+    },
+
+    render(board, view, T) {
+      const g = ctx;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, vw, vh);
+      g.save();
+      g.translate(shakeX, shakeY);
+
+      const inset = cell * .055, rad = cell * .24, sz = cell - inset * 2;
+      const side = view.side;
+
+      /* — hücreler — */
+      for (let i = 0; i < board.size; i++) {
+        const owner = board.o[i], count = board.n[i], cap = board.caps[i];
+        const x = bx + (i % cols) * cell + inset;
+        const y = by + (((i / cols) | 0) * cell) + inset;
+        const playable = owner === 0 || owner === side;
+
+        if (owner) {
+          const s = SPR.side[owner].tint, d = cell * 1.15;
+          g.globalCompositeOperation = 'lighter';
+          g.globalAlpha = .55 + fxGlow[i] * .45;
+          g.drawImage(s, cxOf(i) - d / 2, cyOf(i) - d / 2, d, d);
+          g.globalCompositeOperation = 'source-over';
+          g.globalAlpha = 1;
+        }
+
+        g.lineWidth = 1;
+        g.strokeStyle = owner
+          ? rgba(SIDES[owner].rgb, .40 + fxGlow[i] * .5)
+          : (playable && !view.over ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.07)');
+        roundRect(g, x, y, sz, sz, rad);
+        g.stroke();
+
+        if (count === 0) {
+          const d = SPR.digit[cap], s = cell * .34;
+          if (d) {
+            g.globalAlpha = .85;
+            g.drawImage(d, cxOf(i) - s / 2, cyOf(i) - s / 2, s, s);
+            g.globalAlpha = 1;
+          }
+        }
+
+        /* kritiğe bir kala: dönen kesikli uyarı halkası */
+        if (count > 0 && count === cap - 1) {
+          const d = cell * .94;
+          g.save();
+          g.translate(cxOf(i), cyOf(i));
+          g.rotate(T * 1.1);
+          g.globalAlpha = .45 + Math.sin(T * 6) * .2;
+          g.drawImage(SPR.side[owner].ring, -d / 2, -d / 2, d, d);
+          g.restore();
+          g.globalAlpha = 1;
+        }
+      }
+
+      /* — klavye imleci — */
+      if (view.cursor >= 0 && view.cursor < board.size && !view.over) {
+        const d = cell * (.92 + Math.sin(T * 5) * .03);
+        g.globalAlpha = .5 + Math.sin(T * 5) * .12;
+        g.drawImage(SPR.cursor, cxOf(view.cursor) - d / 2, cyOf(view.cursor) - d / 2, d, d);
+        g.globalAlpha = 1;
+      }
+
+      /* — çekirdekler — */
+      g.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < board.size; i++) {
+        const count = board.n[i];
+        if (!count) continue;
+        const cap = board.caps[i];
+        const tension = count / cap;
+        const spin = T * (.7 + tension * tension * 4.2) * (count > 1 ? 1 : .35);
+        const orbit = count === 1 ? 0 : cell * (.145 + .02 * Math.sin(T * 3));
+        const size = cell * (.60 + fxPop[i] * .34) * (count === 1 ? 1.06 : 1);
+        const spr = SPR.side[board.o[i]].orb;
+        const bob = count === 1 ? Math.sin(T * 2.2 + (i % cols)) * cell * .02 : 0;
+        for (let k = 0; k < count; k++) {
+          const a = spin + k * 6.283 / count;
+          const ox = cxOf(i) + Math.cos(a) * orbit;
+          const oy = cyOf(i) + Math.sin(a) * orbit + bob;
+          g.drawImage(spr, ox - size / 2, oy - size / 2, size, size);
+        }
+      }
+
+      /* — savrulan çekirdekler (izli) — */
+      for (let i = 0; i < comets.length; i++) {
+        const m = comets[i];
+        const k = clamp(m.t / m.dur, 0, 1);
+        const e = 1 - (1 - k) * (1 - k);
+        const spr = SPR.side[m.p].orb, s = cell * .5;
+        for (let j = 3; j >= 0; j--) {
+          const ee = Math.max(0, e - j * .075);
+          g.globalAlpha = (1 - j * .24) * .9;
+          g.drawImage(spr,
+            m.x0 + (m.x1 - m.x0) * ee - s / 2,
+            m.y0 + (m.y1 - m.y0) * ee - s / 2, s, s);
+        }
+        g.globalAlpha = 1;
+      }
+
+      /* — parçacıklar — */
+      for (let i = 0; i < POOL; i++) {
+        if (plife[i] <= 0) continue;
+        const a = plife[i] / pmax[i];
+        g.globalAlpha = a * a;
+        const s = psize[i] * (.35 + a * .65);
+        g.drawImage(SPR.side[pside[i]].spark, px[i] - s / 2, py[i] - s / 2, s, s);
+      }
+      g.globalAlpha = 1;
+
+      /* — şok halkaları — */
+      for (let i = 0; i < waves.length; i++) {
+        const w = waves[i], k = w.t / w.dur;
+        g.strokeStyle = rgba(SIDES[w.p].rgb, (1 - k) * .55);
+        g.lineWidth = cell * .055 * (1 - k) + .6;
+        g.beginPath();
+        g.arc(w.x, w.y, cell * .2 + k * cell * 1.5, 0, 6.283);
+        g.stroke();
+      }
+
+      g.globalCompositeOperation = 'source-over';
+      g.restore();
+
+      if (flashAmt > .002) {
+        g.globalCompositeOperation = 'lighter';
+        g.fillStyle = rgba(SIDES[flashSide].rgb, flashAmt * .30);
+        g.fillRect(0, 0, vw, vh);
+        g.globalCompositeOperation = 'source-over';
+      }
+    }
+  };
+}
+
+
+/* ── src/background.js ── */
+/* NOVA · WebGL bulutsu arka planı
+ *
+ * Tek üçgen + tek fragment shader. Sıradaki oyuncunun rengine doğru yavaşça
+ * kayar. WebGL yoksa ya da bağlam kaybolursa null döner; oyun aynen sürer,
+ * sadece arka plan düz kalır.
+ */
+
+const VERT = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+
+const FRAG = `
+precision mediump float;
+uniform vec2 uRes; uniform float uT; uniform vec3 uTint;
+float hash(vec2 p){p=fract(p*vec2(233.34,851.73));p+=dot(p,p+23.45);return fract(p.x*p.y);}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+  float t=uT*.05;
+  vec2 q=uv*1.5;
+  q+=.40*vec2(sin(q.y*2.3+t*1.7),cos(q.x*2.1-t*1.4));
+  q+=.28*vec2(sin(q.y*4.1-t*1.1),cos(q.x*3.6+t*1.9));
+  float neb=exp(-length(q)*1.35);
+  float neb2=exp(-length(q*.55+vec2(.35,-.25))*2.1);
+  vec3 col=vec3(.026,.022,.062);
+  col+=uTint*neb*.30;
+  col+=vec3(.34,.16,.72)*neb2*.20;
+  vec2 sp=uv*13.0; vec2 ip=floor(sp), fp=fract(sp)-.5;
+  float h=hash(ip);
+  float tw=.55+.45*sin(uT*1.9+h*44.0);
+  float s=smoothstep(.13,.0,length(fp-(vec2(hash(ip+7.),hash(ip+13.))-.5)*.62));
+  col+=vec3(.78,.83,1.)*s*tw*step(.87,h)*.55;
+  col*=1.-.58*pow(length(uv*vec2(.82,.58)),2.);
+  gl_FragColor=vec4(col,1.);
+}`;
+
+function compile(gl, type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    gl.deleteShader(sh);
+    return null;
+  }
+  return sh;
+}
+
+function createBackground(canvas) {
+  let gl = null;
+  try {
+    gl = canvas.getContext('webgl', {
+      antialias: false, depth: false, alpha: false, powerPreference: 'high-performance'
+    });
+  } catch {
+    gl = null;
+  }
+  if (!gl) return null;
+
+  const vs = compile(gl, gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return null;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uRes = gl.getUniformLocation(prog, 'uRes');
+  const uT = gl.getUniformLocation(prog, 'uT');
+  const uTint = gl.getUniformLocation(prog, 'uTint');
+
+  const tint = [1, .23, .36];
+  let lost = false;
+  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); lost = true; });
+
+  return {
+    tint,
+    /** Hedef renge doğru yumuşak geçiş (kare bağımsız). */
+    drift(rgb, dt) {
+      const k = Math.min(1, dt * 1.6);
+      for (let i = 0; i < 3; i++) tint[i] += (rgb[i] / 255 - tint[i]) * k;
+    },
+    size(w, h) {
+      if (lost) return;
+      canvas.width = w; canvas.height = h;
+      gl.viewport(0, 0, w, h);
+      gl.uniform2f(uRes, w, h);
+    },
+    draw(t) {
+      if (lost) return;
+      gl.uniform1f(uT, t);
+      gl.uniform3f(uTint, tint[0], tint[1], tint[2]);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  };
+}
+
+
+/* ── src/audio.js ── */
+/* NOVA · ses — WebAudio ile sentezlenir, tek bir ses dosyası yok.
+ *
+ * Master bus'ta kompresör var: derin zincirlerde üst üste binen sesler
+ * kırpmak yerine sıkışıyor. Ayrıca eşzamanlı ses tavanı uygulanır.
+ */
+
+function createAudio(enabled = true) {
+  let ac = null, noise = null, master = null;
+  let on = enabled;
+  let voices = 0;
+
+  function ready() {
+    if (!ac) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      ac = new Ctor();
+
+      const comp = ac.createDynamicsCompressor();
+      comp.threshold.value = -20;
+      comp.knee.value = 24;
+      comp.ratio.value = 10;
+      comp.attack.value = .003;
+      comp.release.value = .22;
+
+      master = ac.createGain();
+      master.gain.value = .8;
+      master.connect(comp);
+      comp.connect(ac.destination);
+
+      const len = Math.floor(ac.sampleRate * .5);
+      noise = ac.createBuffer(1, len, ac.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+
+  function slot(dur) {
+    if (voices >= 9) return false;
+    voices++;
+    setTimeout(() => { voices--; }, dur * 1000 + 50);
+    return true;
+  }
+
+  function tone(f, f2, dur, type, vol) {
+    if (!on) return;
+    const a = ready();
+    if (!a || !slot(dur)) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), a.currentTime + dur);
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + dur);
+    o.connect(g); g.connect(master);
+    o.start(); o.stop(a.currentTime + dur);
+  }
+
+  function hit(cut, dur, vol) {
+    if (!on) return;
+    const a = ready();
+    if (!a || !slot(dur)) return;
+    const s = a.createBufferSource();
+    s.buffer = noise;
+    const f = a.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(cut, a.currentTime);
+    f.frequency.exponentialRampToValueAtTime(180, a.currentTime + dur);
+    const g = a.createGain();
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + dur);
+    s.connect(f); f.connect(g); g.connect(master);
+    s.start(); s.stop(a.currentTime + dur);
+  }
+
+  return {
+    get enabled() { return on; },
+    toggle() {
+      on = !on;
+      if (on) { ready(); tone(880, 1320, .08, 'triangle', .10); }
+      return on;
+    },
+    /** İlk kullanıcı dokunuşunda çağrılır: iOS ses bağlamını burada açar. */
+    unlock() { try { if (on) ready(); } catch { /* yoksay */ } },
+    drop(n) { tone(360 + n * 90, 220 + n * 60, .10, 'triangle', .11); },
+    deny() { tone(150, 110, .09, 'sine', .09); },
+    undo() { tone(420, 260, .12, 'sine', .075); },
+    /* Derin zincirde ses yükselmiyor, tınısı koyulaşıyor: kırpma yerine karakter. */
+    nova(depth) {
+      const k = Math.min(depth, 6);
+      hit(2600 + k * 380, .30, .17 - k * .012);
+      tone(300 + k * 66, 70, .30, 'sawtooth', .09 - k * .006);
+    },
+    land() { tone(620, 420, .07, 'sine', .055); },
+    win() {
+      [523, 659, 784, 1175].forEach((f, i) => setTimeout(() => tone(f, f * 1.5, .28, 'triangle', .11), i * 110));
+    }
+  };
+}
+
+
+/* ── src/anim.js ── */
+/* NOVA · minik tween motoru
+ *
+ * Eskiden bu iş için CDN'den GSAP çekiliyordu: 70 KB bağımlılık, üstelik
+ * ağ yoksa animasyonlar sessizce kayboluyordu. İhtiyacımız olan üç eğri
+ * ve bir zamanlayıcı; ikisi de burada, ~60 satırda.
+ *
+ * Tween'ler oyunun ana döngüsünden beslenir (kendi rAF'ları yok), böylece
+ * sekme arka plana düştüğünde onlar da duruyor.
+ */
+
+const Ease = {
+  linear: t => t,
+  outCubic: t => 1 - Math.pow(1 - t, 3),
+  outQuint: t => 1 - Math.pow(1 - t, 5),
+  inCubic: t => t * t * t,
+  inOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+  outBack: t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2)
+};
+
+const active = new Set();
+
+function tween(opts) {
+  const t = {
+    from: opts.from ?? 0,
+    to: opts.to ?? 1,
+    dur: Math.max(0.001, opts.dur ?? 0.3),
+    delay: opts.delay ?? 0,
+    ease: opts.ease || Ease.outCubic,
+    onUpdate: opts.onUpdate,
+    onDone: opts.onDone,
+    elapsed: 0,
+    done: false,
+    cancel() { this.done = true; active.delete(this); }
+  };
+  if (t.onUpdate) t.onUpdate(t.from, 0);
+  active.add(t);
+  return t;
+}
+
+/** Sayı sayacı: mevcut tween'i iptal edip yenisini başlatır. */
+function counter(handle, from, to, dur, onUpdate) {
+  if (handle) handle.cancel();
+  return tween({ from, to, dur, ease: Ease.outCubic, onUpdate });
+}
+
+function updateTweens(dt) {
+  if (!active.size) return;
+  for (const t of active) {
+    if (t.delay > 0) { t.delay -= dt; continue; }
+    t.elapsed += dt;
+    const k = Math.min(1, t.elapsed / t.dur);
+    const v = t.from + (t.to - t.from) * t.ease(k);
+    if (t.onUpdate) t.onUpdate(v, k);
+    if (k >= 1) {
+      t.done = true;
+      active.delete(t);
+      if (t.onDone) t.onDone();
+    }
+  }
+}
+
+function stopAllTweens() {
+  for (const t of active) t.done = true;
+  active.clear();
+}
+
+
+/* ── src/hud.js ── */
+/* NOVA · HUD — DOM tarafının tamamı burada.
+ * Oyun mantığı DOM'u tanımaz, HUD da kuralları tanımaz. */
+
+
+
+
+
+const el = id => document.getElementById(id);
+
+function createHud() {
+  const dom = {
+    pod1: el('pod1'), pod2: el('pod2'),
+    core1: el('core1'), core2: el('core2'),
+    pips1: el('pips1'), pips2: el('pips2'),
+    roundNo: el('roundNo'), seriesLbl: el('seriesLbl'),
+    aiBadge: el('aiBadge'),
+    tugA: el('tugA'), tugB: el('tugB'), tugKnob: el('tugKnob'),
+    turnPill: el('turnPill'), turnWho: el('turnWho'),
+    chain: el('chain'), chainN: el('chainN'),
+    toast: el('toast'), live: el('live'), fps: el('fps'),
+    btnUndo: el('btnUndo'), btnNew: el('btnNew'), btnRules: el('btnRules'),
+    btnSound: el('btnSound'), btnStart: el('btnStart'), btnNext: el('btnNext'),
+    btnSettings: el('btnSettings'),
+    modeSeg: el('modeSeg'), boardSeg: el('boardSeg'), seriesSeg: el('seriesSeg'),
+    sheetRules: el('sheetRules'), sheetWin: el('sheetWin'),
+    winKick: el('winKick'), winTitle: el('winTitle'),
+    winTally: el('winTally'), winStreak: el('winStreak')
+  };
+
+  const shown = { 1: 0, 2: 0 };
+  const handles = { 1: null, 2: null };
+  let chainTween = null;
+  let toastTimer = null;
+  let lastSaid = '';
+
+  /* Tahta ve seri seçicileri config'ten üretilir: seçenek eklemek tek satır. */
+  function fillSeg(node, items, valueKey, labelKey) {
+    node.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.val = String(it[valueKey]);
+      b.textContent = it[labelKey];
+      node.appendChild(b);
+    }
+  }
+  fillSeg(dom.boardSeg, BOARDS, 'key', 'label');
+  fillSeg(dom.seriesSeg, SERIES, 'key', 'label');
+
+  function markSeg(node, attr, value) {
+    for (const b of node.children) {
+      b.classList.toggle('on', b.dataset[attr] === String(value));
+    }
+  }
+
+  function setCores(p, value) {
+    if (shown[p] === value) return;
+    handles[p] = counter(handles[p], shown[p], value, .4, v => {
+      dom['core' + p].textContent = pad2(Math.round(v));
+    });
+    shown[p] = value;
+  }
+
+  return {
+    dom,
+
+    /** Ayar panelindeki seçili düğmeleri tazeler. */
+    syncSettings(settings) {
+      markSeg(dom.modeSeg, 'lv', settings.level);
+      markSeg(dom.boardSeg, 'val', settings.board);
+      markSeg(dom.seriesSeg, 'val', settings.series);
+      dom.aiBadge.hidden = settings.level === AI_OFF;
+      dom.btnSound.textContent = settings.sound ? '♪' : '♪̸';
+      dom.btnSound.classList.toggle('off', !settings.sound);
+      dom.btnSound.setAttribute('aria-pressed', String(settings.sound));
+      const s = SERIES.find(x => x.key === settings.series);
+      dom.seriesLbl.textContent = s ? s.label : 'İLK ' + settings.series;
+    },
+
+    sync(state) {
+      const [a, b] = state.counts;
+      const total = a + b;
+      const pct = total ? (a / total) * 100 : 50;
+      dom.tugA.style.width = pct + '%';
+      dom.tugB.style.left = pct + '%';
+      dom.tugKnob.style.left = pct + '%';
+      setCores(1, a);
+      setCores(2, b);
+
+      dom.pod1.classList.toggle('live', state.side === 1 && !state.over);
+      dom.pod2.classList.toggle('live', state.side === 2 && !state.over);
+      dom.roundNo.textContent = pad2(state.round);
+      dom.turnWho.textContent = state.thinking ? 'DÜŞÜNÜYOR' : SIDES[state.side].name;
+      dom.btnUndo.disabled = !state.canUndo;
+
+      for (const p of [1, 2]) {
+        const box = dom['pips' + p];
+        if (box.childElementCount !== state.series) {
+          box.innerHTML = '';
+          for (let i = 0; i < state.series; i++) box.appendChild(document.createElement('span'));
+        }
+        [...box.children].forEach((s, i) => {
+          s.className = 'pip' + (i < state.wins[p] ? ' on' : '');
+        });
+      }
+
+      if (state.turnChanged) {
+        document.documentElement.style.setProperty('--cur', SIDES[state.side].css);
+        dom.turnPill.style.setProperty('--c', SIDES[state.side].css);
+        tween({
+          from: .965, to: 1, dur: .35, ease: Ease.outBack,
+          onUpdate: v => { dom.turnPill.style.transform = `scale(${v})`; }
+        });
+      }
+    },
+
+    /** Ekran okuyucuya durum bildirimi (aynı metni tekrar okutmaz). */
+    say(text) {
+      if (!text || text === lastSaid) return;
+      lastSaid = text;
+      dom.live.textContent = text;
+    },
+
+    toast(text, ms = 1400) {
+      dom.toast.textContent = text;
+      dom.toast.classList.add('on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => dom.toast.classList.remove('on'), ms);
+    },
+
+    showChain(depth, side) {
+      dom.chainN.textContent = '×' + depth;
+      dom.chain.style.setProperty('--cur', SIDES[side].css);
+      if (chainTween) chainTween.cancel();
+      chainTween = tween({
+        from: 0, to: 1, dur: .22, ease: Ease.outBack,
+        onUpdate: v => {
+          dom.chain.style.opacity = String(v);
+          dom.chain.style.transform = `translate(-50%,-50%) scale(${.55 + v * .48})`;
+        }
+      });
+    },
+
+    hideChain() {
+      if (chainTween) chainTween.cancel();
+      const start = parseFloat(dom.chain.style.opacity || '0');
+      if (start <= 0) return;
+      chainTween = tween({
+        from: start, to: 0, dur: .28, ease: Ease.inCubic,
+        onUpdate: v => {
+          dom.chain.style.opacity = String(v);
+          dom.chain.style.transform = `translate(-50%,-50%) scale(${.7 + v * .33})`;
+        }
+      });
+    },
+
+    openSheet(id) {
+      const s = dom[id];
+      s.classList.add('on');
+      const card = s.querySelector('.card');
+      tween({
+        from: 0, to: 1, dur: .45, ease: Ease.outQuint,
+        onUpdate: v => {
+          card.style.opacity = String(v);
+          card.style.transform = `translateY(${(1 - v) * 28}px) scale(${.96 + v * .04})`;
+        }
+      });
+    },
+
+    closeSheet(id) { dom[id].classList.remove('on'); },
+    isSheetOpen() { return dom.sheetRules.classList.contains('on') || dom.sheetWin.classList.contains('on'); },
+
+    showWin({ winner, matchOver, wins, streak }) {
+      document.documentElement.style.setProperty('--cur', SIDES[winner].css);
+      dom.winKick.textContent = matchOver ? 'MAÇ TAMAMLANDI' : 'TUR TAMAMLANDI';
+      dom.winTitle.innerHTML = SIDES[winner].name +
+        `<span class="big">${matchOver ? 'MAÇI ALDI' : 'TURU ALDI'}</span>`;
+      dom.winTally.textContent = `MAÇ ${wins[1]} — ${wins[2]}`;
+      dom.winStreak.textContent = streak || '';
+      dom.btnNext.textContent = matchOver ? 'YENİ MAÇ' : 'SONRAKİ TUR';
+      dom.btnNext.dataset.reset = matchOver ? '1' : '';
+    },
+
+    setFps(text) { dom.fps.textContent = text; },
+    showFps(on) { dom.fps.hidden = !on; }
+  };
+}
+
+
+/* ── src/engine.js ── */
+/* NOVA · kural motoru
+ *
+ * Saf veri + saf fonksiyon: DOM yok, zamanlayıcı yok, çizim yok.
+ * Hem ekrandaki oyun hem de AI aramasi *tam olarak bu* fonksiyonları
+ * kullanır; kurallar tek yerde tanımlı olduğu için ikisi asla ayrışamaz.
+ *
+ * Tahta düz dizilerle tutulur:
+ *   n[i] → hücredeki çekirdek sayısı
+ *   o[i] → sahibi (0 boş, 1 MAGMA, 2 AURORA)
+ */
+
+const geoCache = new Map();
+
+/** rows×cols geometrisi (kapasite + komşu tabloları) bir kez üretilir, paylaşılır. */
+function geometry(rows, cols) {
+  const key = rows + 'x' + cols;
+  const hit = geoCache.get(key);
+  if (hit) return hit;
+
+  const size = rows * cols;
+  const caps = new Uint8Array(size);
+  const nbrs = new Array(size);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      const a = [];
+      if (r > 0) a.push(i - cols);
+      if (r < rows - 1) a.push(i + cols);
+      if (c > 0) a.push(i - 1);
+      if (c < cols - 1) a.push(i + 1);
+      nbrs[i] = Int32Array.from(a);
+      caps[i] = a.length; // köşe 2 · kenar 3 · orta 4
+    }
+  }
+  const geo = { rows, cols, size, caps, nbrs };
+  geoCache.set(key, geo);
+  return geo;
+}
+
+function createBoard(rows, cols) {
+  const geo = geometry(rows, cols);
+  return {
+    rows: geo.rows, cols: geo.cols, size: geo.size,
+    caps: geo.caps, nbrs: geo.nbrs,
+    n: new Uint8Array(geo.size),
+    o: new Uint8Array(geo.size),
+    played: [false, false, false] // 1 ve 2 indisleri kullanılır
+  };
+}
+
+function cloneBoard(b) {
+  return {
+    rows: b.rows, cols: b.cols, size: b.size,
+    caps: b.caps, nbrs: b.nbrs,
+    n: b.n.slice(), o: b.o.slice(),
+    played: b.played.slice()
+  };
+}
+
+/** Kaydedilebilir sade nesne (localStorage / geri alma yığını için). */
+function snapshot(b) {
+  return { n: Array.from(b.n), o: Array.from(b.o), played: b.played.slice() };
+}
+
+function restore(b, snap) {
+  b.n.set(snap.n);
+  b.o.set(snap.o);
+  b.played = snap.played.slice();
+  return b;
+}
+
+const indexOf = (b, r, c) => r * b.cols + c;
+const rowOf = (b, i) => (i / b.cols) | 0;
+const colOf = (b, i) => i % b.cols;
+
+/** Bir hamle geçerli mi: boş hücre ya da kendi rengin. */
+function isLegal(b, side, i) {
+  return i >= 0 && i < b.size && (b.o[i] === 0 || b.o[i] === side);
+}
+
+function legalMoves(b, side, out) {
+  const dst = out || [];
+  let k = 0;
+  for (let i = 0; i < b.size; i++) {
+    if (b.o[i] === 0 || b.o[i] === side) { dst[k++] = i; }
+  }
+  if (!out) dst.length = k;
+  return out ? k : dst;
+}
+
+/** Kapasiteye ulaşmış hücreleri `out`a yazar, sayısını döndürür. */
+function criticalCells(b, out) {
+  let k = 0;
+  for (let i = 0; i < b.size; i++) {
+    if (b.n[i] >= b.caps[i] && b.n[i] > 0) out[k++] = i;
+  }
+  return k;
+}
+
+/** Patlayan hücrelerden kapasite kadar çekirdek düşer (savrulma anı). */
+function detonate(b, cells, k) {
+  for (let j = 0; j < k; j++) {
+    const i = cells[j];
+    b.n[i] -= b.caps[i];
+    if (b.n[i] <= 0) { b.n[i] = 0; b.o[i] = 0; }
+  }
+}
+
+/** Savrulan çekirdekler komşulara düşer ve komşuları patlatan tarafa çevirir. */
+function scatter(b, cells, k, side) {
+  for (let j = 0; j < k; j++) {
+    const nb = b.nbrs[cells[j]];
+    for (let m = 0; m < nb.length; m++) {
+      const q = nb[m];
+      b.n[q]++;
+      b.o[q] = side;
+    }
+  }
+}
+
+/** Karşı tarafın sahada tek bir çekirdeği kaldı mı? */
+function hasRival(b, side) {
+  for (let i = 0; i < b.size; i++) {
+    if (b.n[i] && b.o[i] && b.o[i] !== side) return true;
+  }
+  return false;
+}
+
+/** Çekirdeği yerleştirir. Geçersiz hamlede false döner, tahtaya dokunmaz. */
+function place(b, side, i) {
+  if (!isLegal(b, side, i)) return false;
+  b.n[i]++;
+  b.o[i] = side;
+  b.played[side] = true;
+  return true;
+}
+
+/**
+ * Zinciri sonuna kadar (senkron) çözer — AI ve testler için.
+ * Ekrandaki oyun aynı adımları tek tek, araya animasyon koyarak çalıştırır.
+ * Tek renk kaldığında zincir sonsuza gitmesin diye erken durur.
+ */
+function resolve(b, side, opts = {}) {
+  const maxSteps = opts.maxSteps ?? 512;
+  const buf = opts.buf || new Int32Array(b.size);
+  let steps = 0;
+  while (steps < maxSteps) {
+    if (!hasRival(b, side)) break;
+    const k = criticalCells(b, buf);
+    if (!k) break;
+    steps++;
+    detonate(b, buf, k);
+    scatter(b, buf, k, side);
+    if (opts.onStep) opts.onStep(buf, k, steps);
+  }
+  return steps;
+}
+
+/** Hamle + zincir, tek çağrıda. Geçersiz hamlede -1. */
+function applyMove(b, side, i, opts) {
+  if (!place(b, side, i)) return -1;
+  return resolve(b, side, opts);
+}
+
+function counts(b) {
+  let a = 0, x = 0;
+  for (let i = 0; i < b.size; i++) {
+    const v = b.n[i];
+    if (!v) continue;
+    if (b.o[i] === 1) a += v; else if (b.o[i] === 2) x += v;
+  }
+  return [a, x];
+}
+
+/**
+ * Turu kazanan taraf, yoksa 0.
+ * İki taraf da en az bir hamle yapmadan kimse elenmiş sayılmaz —
+ * aksi halde açılış hamlesi anında "kazandın" olurdu.
+ */
+function winnerOf(b) {
+  if (!b.played[1] || !b.played[2]) return 0;
+  const [a, x] = counts(b);
+  if (a > 0 && x === 0) return 1;
+  if (x > 0 && a === 0) return 2;
+  return 0;
+}
+
+
+/* ── src/ai.js ── */
+/* NOVA · AI rakip
+ *
+ * Negamax + alfa-beta, hamle sıralaması ve zaman bütçeli iteratif derinleşme.
+ * Arama tahtanın kopyaları üzerinde döner; gerçek oyun durumuna hiç dokunmaz
+ * ve kuralları engine.js'ten alır (kural kopyası yok).
+ */
+
+
+
+
+const WIN = 1e6;
+const defaultNow = () => (globalThis.performance ? performance.now() : Date.now());
+
+/**
+ * Konum değerlendirmesi (`me` açısından).
+ * Köşe > kenar > orta: kapasitesi düşük hücre daha az saldırıya açık.
+ * Yanında patlamaya bir kala düşman varsa hücre borç yazılır.
+ */
+function evaluate(b, me) {
+  const { n, o, caps, nbrs, size } = b;
+  let mine = 0, theirs = 0, score = 0;
+
+  for (let i = 0; i < size; i++) {
+    const cnt = n[i];
+    if (!cnt) continue;
+    const own = o[i];
+    const cap = caps[i];
+    if (own === me) mine += cnt; else theirs += cnt;
+
+    let w = cap === 2 ? 3.4 : cap === 3 ? 2.1 : 1.0;
+    const nb = nbrs[i];
+    let vulnerable = false;
+    for (let m = 0; m < nb.length; m++) {
+      const q = nb[m];
+      if (n[q] && o[q] !== own && n[q] >= caps[q] - 1) { vulnerable = true; break; }
+    }
+    if (vulnerable) w -= 3.0;          // komşu düşman tek dokunuşla burayı yutar
+    else if (cnt === cap - 1) w += 1.6; // güvende ve tetikte
+
+    score += own === me ? w * cnt : -w * cnt;
+  }
+
+  // Eleme yalnızca iki taraf da oynadıktan sonra anlamlı.
+  if (b.played[1] && b.played[2]) {
+    if (mine > 0 && theirs === 0) return WIN;
+    if (theirs > 0 && mine === 0) return -WIN;
+  }
+  return score + (mine - theirs) * 0.8;
+}
+
+/** Bir düğümün çocukları: her yasal hamle uygulanmış tahta kopyaları. */
+function expand(b, side) {
+  const moves = legalMoves(b, side);
+  const kids = [];
+  for (let j = 0; j < moves.length; j++) {
+    const i = moves[j];
+    const child = cloneBoard(b);
+    applyMove(child, side, i);
+    kids.push({ move: i, board: child, score: evaluate(child, side) });
+  }
+  kids.sort((p, q) => q.score - p.score);
+  return kids;
+}
+
+function search(b, me, depth, alpha, beta, ctx, ply) {
+  const kids = expand(b, me);
+  if (!kids.length) return { value: -WIN + ply, move: -1 };
+
+  let best = -Infinity;
+  let bestMove = kids[0].move;
+  const width = Math.min(kids.length, ctx.width);
+
+  for (let j = 0; j < width; j++) {
+    const kid = kids[j];
+    let v;
+    const terminal = Math.abs(kid.score) >= WIN || !hasRival(kid.board, me);
+    if (depth <= 1 || terminal || ctx.now() > ctx.deadline) {
+      // Yaprak: erken kazanç geç kazançtan iyidir.
+      v = terminal && kid.score >= WIN ? WIN - ply : kid.score;
+    } else {
+      v = -search(kid.board, 3 - me, depth - 1, -beta, -alpha, ctx, ply + 1).value;
+    }
+    if (v > best) { best = v; bestMove = kid.move; }
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return { value: best, move: bestMove };
+}
+
+/**
+ * Seçilen hamlenin hücre indisi; oynanacak hamle yoksa -1.
+ * opts: { now, rng, budget } — testlerde deterministik kılmak için enjekte edilir.
+ */
+function pickMove(board, side, level, opts = {}) {
+  const cfg = LEVELS[level] || LEVELS[LEVELS.length - 1];
+  const now = opts.now || defaultNow;
+  const rng = opts.rng || Math.random;
+
+  const moves = legalMoves(board, side);
+  if (!moves.length) return -1;
+
+  // Kolay/normal seviyede kasıtlı hata payı: rakip insan gibi aksasın.
+  if (cfg.noise > 0 && rng() < cfg.noise) {
+    return moves[Math.min(moves.length - 1, (rng() * moves.length) | 0)];
+  }
+
+  const ctx = {
+    now,
+    deadline: now() + (opts.budget ?? cfg.budget),
+    width: cfg.width
+  };
+
+  let bestMove = moves[0];
+  for (let d = 1; d <= cfg.depth; d++) {
+    const res = search(board, side, d, -Infinity, Infinity, ctx, 0);
+    if (res.move >= 0) bestMove = res.move;
+    if (Math.abs(res.value) >= WIN) break;   // kazanan/kaybeden hat bulundu
+    if (now() > ctx.deadline) break;         // bütçe doldu, elde olanla yetin
+  }
+  return bestMove;
+}
+
+
+/* ── src/storage.js ── */
+/* NOVA · ayar kalıcılığı — localStorage kapalıysa (gizli sekme, iframe) sessizce bellekte kalır. */
+
+
+
+let memory = null;
+
+function backing() {
+  try {
+    const probe = '__nova__';
+    localStorage.setItem(probe, '1');
+    localStorage.removeItem(probe);
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+const store = backing();
+
+function loadSettings() {
+  if (memory) return { ...memory };
+  let saved = null;
+  try {
+    saved = store ? JSON.parse(store.getItem(STORE_KEY) || 'null') : null;
+  } catch {
+    saved = null;
+  }
+  memory = { ...DEFAULTS, ...(saved && typeof saved === 'object' ? saved : {}) };
+  return { ...memory };
+}
+
+function saveSettings(patch) {
+  memory = { ...loadSettings(), ...patch };
+  try {
+    if (store) store.setItem(STORE_KEY, JSON.stringify(memory));
+  } catch {
+    /* kota dolu ya da erişim yok: bellekteki kopya yeter */
+  }
+  return { ...memory };
+}
+
+
+/* ── src/game.js ── */
+/* NOVA · oyun akışı
+ *
+ * Kuralları engine.js'ten, hamle seçimini ai.js'ten, çizimi renderer.js'ten
+ * alır; buradaki iş sıra yönetimi, animasyonlu zincir, geri alma ve girdiler.
+ *
+ * Asenkron zincirler `epoch` ile damgalanır: tur sıfırlanır ya da geri alınırsa
+ * epoch artar ve yarıda kalan zincir bir sonraki beklemede sessizce çekilir.
+ */
+
+
+
+
+
+
+
+const UNDO_LIMIT = 80;
+
+function createGame({ renderer, hud, audio, canvas, onLayout }) {
+  let settings = loadSettings();
+  let board = createBoard(boardSpec().rows, boardSpec().cols);
+
+  let side = 1, round = 1;
+  let wins = { 1: 0, 2: 0 };
+  let stats = { 1: settings.stats1 || 0, 2: settings.stats2 || 0 };
+  let streak = { side: 0, count: 0 };
+  let over = false, busy = false, thinking = false, started = false;
+  let epoch = 0;
+  let undoStack = [];
+  let cursor = 0, cursorVisible = false;
+
+  function boardSpec() {
+    return BOARDS.find(b => b.key === settings.board) || BOARDS[1];
+  }
+  const isAI = () => settings.level !== AI_OFF;
+  const humanSide = () => (isAI() ? 3 - AI_SIDE : side);
+
+  function canUndo() {
+    if (!started || over || busy || thinking || !undoStack.length) return false;
+    if (!isAI()) return true;
+    return undoStack.some(e => e.side === humanSide());
+  }
+
+  function syncHud(turnChanged) {
+    hud.sync({
+      counts: counts(board),
+      side, over, round, wins,
+      series: settings.series,
+      thinking,
+      canUndo: canUndo(),
+      turnChanged
+    });
+    if (turnChanged && !over) {
+      hud.say(thinking ? 'Rakip düşünüyor' : SIDES[side].name + ' sırası');
+    }
+  }
+
+  /* ── tur yaşam döngüsü ───────────────────────────────────────── */
+
+  function newRound(sameStarter) {
+    epoch++;
+    board = createBoard(boardSpec().rows, boardSpec().cols);
+    renderer.resizeFor(board);
+    renderer.clearFx();
+    hud.hideChain();
+    undoStack = [];
+    over = false; busy = false; thinking = false;
+    cursor = Math.min(cursor, board.size - 1);
+    if (!sameStarter) side = round % 2 === 1 ? 1 : 2;
+    onLayout();
+    syncHud(true);
+    maybeAI();
+  }
+
+  function newMatch() {
+    wins = { 1: 0, 2: 0 };
+    streak = { side: 0, count: 0 };
+    round = 1;
+    newRound(false);
+  }
+
+  function finishRound(winner) {
+    over = true;
+    hud.hideChain();
+    wins[winner]++;
+    streak = streak.side === winner
+      ? { side: winner, count: streak.count + 1 }
+      : { side: winner, count: 1 };
+
+    const matchOver = wins[winner] >= settings.series;
+    if (matchOver) {
+      stats[winner]++;
+      settings = saveSettings({ stats1: stats[1], stats2: stats[2] });
+    }
+
+    const my = epoch;
+    for (let i = 0; i < 26; i++) {
+      setTimeout(() => {
+        if (my !== epoch) return;
+        const c = renderer.center((Math.random() * board.size) | 0);
+        renderer.burstAt(c.x, c.y, winner, 1.1);
+      }, i * 45);
+    }
+    renderer.kick(14);
+    renderer.flash(winner, 1);
+    audio.win();
+    haptic(160);
+    syncHud();
+    hud.say(SIDES[winner].name + (matchOver ? ' maçı aldı' : ' turu aldı'));
+
+    hud.showWin({
+      winner, matchOver, wins,
+      streak: matchOver
+        ? `TOPLAM ${stats[1]} — ${stats[2]}`
+        : (streak.count >= 2 ? `${SIDES[winner].name} ÜST ÜSTE ${streak.count}` : '')
+    });
+    setTimeout(() => { if (my === epoch) hud.openSheet('sheetWin'); }, 900);
+  }
+
+  /* ── hamle ve zincir ─────────────────────────────────────────── */
+
+  async function runCascade(mover) {
+    const my = epoch;
+    const buf = new Int32Array(board.size);
+    let depth = 0;
+
+    while (depth < 512) {
+      if (my !== epoch) return true;
+      if (!hasRival(board, mover)) break;      // tek renk kaldı: zincir anlamsız
+      const k = criticalCells(board, buf);
+      if (!k) break;
+      depth++;
+
+      if (depth >= 2) hud.showChain(depth, mover);
+      renderer.kick(3 + Math.min(depth, 7) * 1.6 + k * .7);
+      renderer.flash(mover, Math.min(1, .28 + depth * .10));
+      audio.nova(depth);
+      haptic(14 + depth * 5);
+
+      for (let j = 0; j < k; j++) {
+        renderer.burst(buf[j], mover, 1 + Math.min(depth, 4) * .22);
+        renderer.wave(buf[j], mover, .42);
+        renderer.launch(buf[j], board, mover, TRAVEL_MS / 1000);
+      }
+      detonate(board, buf, k);
+      syncHud();
+
+      await sleep(TRAVEL_MS);
+      if (my !== epoch) return true;
+
+      scatter(board, buf, k, mover);
+      for (let j = 0; j < k; j++) {
+        const nb = board.nbrs[buf[j]];
+        for (let m = 0; m < nb.length; m++) {
+          renderer.pop(nb[m]);
+          renderer.burst(nb[m], mover, .35);
+        }
+      }
+      audio.land();
+      syncHud();
+
+      const w = winnerOf(board);
+      if (w) { finishRound(w); return false; }
+
+      await sleep(SETTLE_MS);
+      if (my !== epoch) return true;
+    }
+    hud.hideChain();
+    return false;
+  }
+
+  async function play(i, fromAI) {
+    if (!started || busy || over) return;
+    if (isAI() && side === AI_SIDE && !fromAI) return;
+    if (!isLegal(board, side, i)) {
+      audio.deny();
+      haptic(4);
+      hud.toast('RAKİBİN HÜCRESİ');
+      return;
+    }
+
+    undoStack.push({ snap: snapshot(board), side });
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+
+    const my = epoch;
+    busy = true;
+    place(board, side, i);
+    renderer.pop(i);
+    renderer.burst(i, side, .45);
+    renderer.wave(i, side, .34);
+    audio.drop(board.n[i]);
+    haptic(9);
+    syncHud();
+
+    const aborted = await runCascade(side);
+    if (aborted || my !== epoch) return;
+    if (!over) {
+      side = 3 - side;
+      busy = false;
+      syncHud(true);
+      maybeAI();
+    }
+  }
+
+  function maybeAI() {
+    if (!isAI() || over || !started || side !== AI_SIDE) return;
+    const my = epoch;
+    thinking = true;
+    syncHud(true);
+    setTimeout(() => {
+      if (my !== epoch || over || !started) { thinking = false; return; }
+      let idx = -1;
+      try {
+        idx = pickMove(board, AI_SIDE, settings.level);
+      } catch {
+        idx = -1;
+      }
+      thinking = false;
+      if (my !== epoch || over) return;
+      if (idx < 0 || !isLegal(board, AI_SIDE, idx)) {
+        const moves = legalMoves(board, AI_SIDE);
+        idx = moves.length ? moves[(Math.random() * moves.length) | 0] : -1;
+      }
+      if (idx < 0) return;
+      cursorVisible = false;
+      play(idx, true);
+    }, 380 + Math.random() * 280);
+  }
+
+  function undo() {
+    if (!canUndo()) return;
+    epoch++;                       // bekleyen AI zamanlayıcısı / zinciri iptal
+    thinking = false;
+    busy = false;
+
+    let entry = undoStack.pop();
+    if (isAI()) {
+      while (entry && entry.side !== humanSide() && undoStack.length) entry = undoStack.pop();
+    }
+    restore(board, entry.snap);
+    side = entry.side;
+
+    renderer.clearFx();
+    hud.hideChain();
+    audio.undo();
+    hud.toast('GERİ ALINDI');
+    syncHud(true);
+  }
+
+  /* ── ayarlar ─────────────────────────────────────────────────── */
+
+  function applySettings(patch) {
+    const before = { ...settings };
+    settings = saveSettings(patch);
+    hud.syncSettings(settings);
+    const boardChanged = before.board !== settings.board;
+    const modeChanged = before.level !== settings.level;
+    const seriesChanged = before.series !== settings.series;
+    if (boardChanged || modeChanged || seriesChanged) newMatch();
+    else syncHud(true);
+  }
+
+  /* ── girdi ───────────────────────────────────────────────────── */
+
+  canvas.addEventListener('pointerdown', e => {
+    audio.unlock();
+    if (hud.isSheetOpen()) return;
+    const i = renderer.cellAt(e.clientX, e.clientY, board);
+    if (i < 0) return;
+    cursorVisible = false;
+    play(i, false);
+  }, { passive: true });
+
+  addEventListener('keydown', e => {
+    const k = e.key;
+    if (hud.isSheetOpen()) {
+      if (k === 'Escape' && hud.dom.sheetRules.classList.contains('on') && started) {
+        hud.closeSheet('sheetRules');
+      }
+      return;
+    }
+    const cols = board.cols;
+    let handled = true;
+    switch (k) {
+      case 'ArrowLeft':  cursor = cursor % cols === 0 ? cursor : cursor - 1; cursorVisible = true; break;
+      case 'ArrowRight': cursor = cursor % cols === cols - 1 ? cursor : cursor + 1; cursorVisible = true; break;
+      case 'ArrowUp':    cursor = cursor - cols < 0 ? cursor : cursor - cols; cursorVisible = true; break;
+      case 'ArrowDown':  cursor = cursor + cols >= board.size ? cursor : cursor + cols; cursorVisible = true; break;
+      case ' ':
+      case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor, false); break;
+      case 'z': case 'Z': undo(); break;
+      case 'r': case 'R': newRound(true); break;
+      case 'm': case 'M': api.toggleSound(); break;
+      case '?': hud.openSheet('sheetRules'); break;
+      default: handled = false;
+    }
+    if (handled) e.preventDefault();
+  });
+
+  const api = {
+    get board() { return board; },
+    get settings() { return settings; },
+    view() {
+      return { side, over, cursor: cursorVisible ? cursor : -1 };
+    },
+    tintRgb() { return SIDES[side].rgb; },
+    start() {
+      started = true;
+      hud.closeSheet('sheetRules');
+      syncHud(true);
+      maybeAI();
+    },
+    restartRound() { newRound(true); },
+    nextRound(resetMatch) {
+      if (resetMatch) { newMatch(); return; }
+      round++;
+      newRound(false);
+    },
+    newMatch,
+    undo,
+    applySettings,
+    toggleSound() {
+      const on = audio.toggle();
+      settings = saveSettings({ sound: on });
+      hud.syncSettings(settings);
+      hud.toast(on ? 'SES AÇIK' : 'SES KAPALI', 900);
+    },
+    refresh() { syncHud(); },
+    boot() {
+      hud.syncSettings(settings);
+      newMatch();
+    }
+  };
+  return api;
+}
+
+
+/* ── src/main.js ── */
+/* NOVA · açılış, ana döngü ve uyarlanabilir kalite
+ *
+ * Kare bütçesi FPS ile değil, kare başına *gerçek iş süresi* ile ölçülür:
+ * 120 Hz ekranda FPS yüksek görünürken bütçenin iki katının harcandığını
+ * ancak bu yakalar. Kademe iki yönlü — geçici bir takılma kaliteyi kalıcı
+ * olarak düşürmez.
+ */
+
+
+
+
+
+
+
+
+
+
+const gameCanvas = document.getElementById('game');
+const bgCanvas = document.getElementById('bg');
+const stage = document.getElementById('stage');
+
+const settings = loadSettings();
+const renderer = createRenderer(gameCanvas);
+const bg = createBackground(bgCanvas);
+const audio = createAudio(settings.sound);
+const hud = createHud();
+
+const Q = { tier: 2, parts: 1, shake: 1, dprCap: 2 };
+if (REDUCED) { Q.parts = .4; Q.shake = .25; }
+renderer.quality.parts = Q.parts;
+renderer.quality.shake = Q.shake;
+
+let game = null;
+
+function layout() {
+  if (!game) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, Q.dprCap);
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.layout(stage.getBoundingClientRect(), game.board, dpr, w, h);
+  if (bg) bg.size(Math.round(w * .6), Math.round(h * .6));
+}
+
+game = createGame({ renderer, hud, audio, canvas: gameCanvas, onLayout: layout });
+
+/* ── kontroller ─────────────────────────────────────────────── */
+const d = hud.dom;
+
+d.modeSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  audio.unlock();
+  game.applySettings({ level: +b.dataset.lv });
+});
+d.boardSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  game.applySettings({ board: b.dataset.val });
+});
+d.seriesSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  game.applySettings({ series: +b.dataset.val });
+});
+
+d.btnStart.addEventListener('click', () => { audio.unlock(); game.start(); });
+d.btnRules.addEventListener('click', () => hud.openSheet('sheetRules'));
+d.btnNew.addEventListener('click', () => { hud.closeSheet('sheetWin'); game.restartRound(); });
+d.btnUndo.addEventListener('click', () => game.undo());
+d.btnSound.addEventListener('click', () => { audio.unlock(); game.toggleSound(); });
+d.btnNext.addEventListener('click', e => {
+  hud.closeSheet('sheetWin');
+  game.nextRound(!!e.currentTarget.dataset.reset);
+});
+d.btnSettings.addEventListener('click', () => {
+  hud.closeSheet('sheetWin');
+  hud.openSheet('sheetRules');
+});
+
+/* ── ölçüm ──────────────────────────────────────────────────── */
+addEventListener('resize', layout);
+addEventListener('orientationchange', () => setTimeout(layout, 120));
+if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+
+let showFps = /[?&]fps=1/.test(location.search);
+hud.showFps(showFps);
+addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') { showFps = !showFps; hud.showFps(showFps); }
+});
+
+/* ── ana döngü ──────────────────────────────────────────────── */
+let last = performance.now();
+let winStart = last, winWork = 0, winInterval = 0, winFrames = 0;
+let slowRuns = 0, fastRuns = 0, warmup = 0;
+let paused = false;
+
+function applyTier() {
+  if (Q.tier === 2) { Q.parts = 1;   Q.shake = 1;  Q.dprCap = 2; }
+  if (Q.tier === 1) { Q.parts = .55; Q.shake = .7; Q.dprCap = 1.7; }
+  if (Q.tier === 0) { Q.parts = .28; Q.shake = .4; Q.dprCap = 1.35; }
+  if (REDUCED) { Q.parts = Math.min(Q.parts, .4); Q.shake = Math.min(Q.shake, .25); }
+  renderer.quality.parts = Q.parts;
+  renderer.quality.shake = Q.shake;
+  layout();
+}
+
+document.addEventListener('visibilitychange', () => {
+  paused = document.hidden;
+  if (!paused) { last = performance.now(); winStart = last; winWork = winInterval = winFrames = 0; }
+});
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (paused) { last = now; return; }
+
+  const interval = now - last;
+  let dt = interval / 1000;
+  last = now;
+  if (dt > .05) dt = .05;            // sekmeden dönüşte sıçramayı kes
+  const T = now / 1000;
+
+  const t0 = performance.now();
+  updateTweens(dt);
+  renderer.step(dt);
+  if (bg) { bg.drift(game.tintRgb(), dt); bg.draw(T); }
+  renderer.render(game.board, game.view(), T);
+  const work = performance.now() - t0;
+
+  winWork += work;
+  winInterval += Math.min(interval, 50);
+  winFrames++;
+
+  if (now - winStart >= 500) {
+    const avgWork = winWork / winFrames;
+    const avgInterval = Math.max(6, winInterval / winFrames);
+    if (showFps) {
+      hud.setFps(`${Math.round(1000 / avgInterval)} FPS · ${avgWork.toFixed(1)}ms · Q${Q.tier}`);
+    }
+    if (warmup < 2) warmup++;        // ilk saniye: font + shader derlemesi sayılmaz
+    else {
+      const strained = avgWork > avgInterval * .62 || avgInterval > 21;
+      const roomy = avgWork < avgInterval * .30 && avgInterval < 18;
+      if (strained) {
+        fastRuns = 0;
+        if (++slowRuns >= 2 && Q.tier > 0) { Q.tier--; applyTier(); slowRuns = 0; }
+      } else if (roomy) {
+        slowRuns = 0;
+        if (++fastRuns >= 6 && Q.tier < 2) { Q.tier++; applyTier(); fastRuns = 0; }
+      } else { slowRuns = 0; fastRuns = 0; }
+    }
+    winStart = now; winWork = 0; winInterval = 0; winFrames = 0;
+  }
+}
+
+/* ── açılış ─────────────────────────────────────────────────── */
+game.boot();
+layout();
+setTimeout(layout, 60);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout).catch(() => {});
+requestAnimationFrame(frame);
+
+if (!REDUCED) {
+  document.querySelectorAll('.pod').forEach((node, i) => {
+    tween({
+      from: 0, to: 1, dur: .6, delay: .1 + i * .08, ease: Ease.outQuint,
+      onUpdate: v => {
+        node.style.opacity = String(v);
+        node.style.transform = `translateY(${(1 - v) * -16}px)`;
+      },
+      onDone: () => { node.style.transform = ''; node.style.opacity = ''; }
+    });
+  });
+  const dock = document.querySelector('.dock');
+  tween({
+    from: 0, to: 1, dur: .6, delay: .2, ease: Ease.outQuint,
+    onUpdate: v => {
+      dock.style.opacity = String(v);
+      dock.style.transform = `translateY(${(1 - v) * 20}px)`;
+    },
+    onDone: () => { dock.style.transform = ''; dock.style.opacity = ''; }
+  });
+}
+hud.openSheet('sheetRules');
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07061A">
+<meta name="description" content="NOVA · Kritik Kütle — tek telefonda iki oyunculu zincirleme patlama oyunu.">
+<title>NOVA · Kritik Kütle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307061A'/%3E%3Ccircle cx='25' cy='27' r='11' fill='%23FF3B5C'/%3E%3Ccircle cx='40' cy='39' r='11' fill='%233DF5C0' fill-opacity='.9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<canvas id="game" role="application" aria-label="Kritik Kütle tahtası. Ok tuşlarıyla gez, boşluk ile çekirdek bırak."></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="ui">
+  <div class="hud">
+    <div class="pod p1 live" id="pod1" style="--c:var(--p1)">
+      <div class="pname">MAGMA</div>
+      <div class="pcores" id="core1">00</div>
+      <div class="pips" id="pips1"></div>
+    </div>
+    <div class="mid">
+      <div class="lbl">TUR</div>
+      <div class="rnd" id="roundNo">01</div>
+      <div class="lbl" id="seriesLbl">İLK 3</div>
+    </div>
+    <div class="pod p2" id="pod2" style="--c:var(--p2)">
+      <div class="pname">AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
+      <div class="pcores" id="core2">00</div>
+      <div class="pips" id="pips2"></div>
+    </div>
+  </div>
+
+  <div class="tug" aria-hidden="true"><i id="tugA"></i><u id="tugB"></u><b id="tugKnob"></b></div>
+
+  <div id="stage">
+    <div class="chain" id="chain" aria-hidden="true"><em id="chainN">×2</em><span>ZİNCİR</span></div>
+    <div class="toast" id="toast" aria-hidden="true"></div>
+  </div>
+
+  <div class="dock">
+    <div class="turn" id="turnPill" style="--c:var(--p1)">
+      <span class="bead"></span>
+      <span class="who" id="turnWho">MAGMA</span>
+      <span class="sub">SIRASI</span>
+    </div>
+    <button class="tool" id="btnUndo" aria-label="Son hamleyi geri al" disabled>↶</button>
+    <button class="tool" id="btnNew" aria-label="Turu yeniden başlat">⟲</button>
+    <button class="tool" id="btnRules" aria-label="Kurallar ve ayarlar">?</button>
+    <button class="tool" id="btnSound" aria-label="Sesi aç kapat">♪</button>
+  </div>
+</div>
+
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+
+<div class="sheet on" id="sheetRules">
+  <div class="card">
+    <div class="halo"></div>
+    <div class="kicker">TEK TELEFON · İKİ OYUNCU · SIRAYLA</div>
+    <h1>NOVA<span class="big">KRİTİK KÜTLE</span></h1>
+    <ul class="steps">
+      <li><i>01</i><span>Boş bir hücreye ya da <strong>kendi rengindeki</strong> bir hücreye dokun; oraya bir çekirdek düşer.</span></li>
+      <li><i>02</i><span>Her hücrenin taşıma sınırı var: <strong>köşe 2, kenar 3, orta 4</strong>. Boş hücrelerde bu sayı soluk görünür.</span></li>
+      <li><i>03</i><span>Sınıra ulaşan hücre <strong>nova olur</strong>: çekirdekleri dört komşuya savrulur ve o komşular senin rengine döner.</span></li>
+      <li><i>04</i><span>Savrulan çekirdek komşuyu da doldurursa <strong>zincir</strong> büyür. Tek dokunuş tahtayı devirebilir.</span></li>
+      <li><i>05</i><span>Rakibin son çekirdeğini yutan turu alır. <strong>Seriyi alan maçı alır.</strong></span></li>
+    </ul>
+
+    <div class="segwrap">
+      <div class="seglbl">RAKİP</div>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-lv="-1">2 OYUNCU</button>
+        <button type="button" data-lv="0">KOLAY</button>
+        <button type="button" data-lv="1">NORMAL</button>
+        <button type="button" data-lv="2">ZOR</button>
+      </div>
+    </div>
+    <div class="segwrap">
+      <div class="seglbl">TAHTA</div>
+      <div class="seg" id="boardSeg"></div>
+    </div>
+    <div class="segwrap">
+      <div class="seglbl">SERİ</div>
+      <div class="seg" id="seriesSeg"></div>
+    </div>
+
+    <p class="hint">
+      Klavye: <kbd>← ↑ → ↓</kbd> gez · <kbd>boşluk</kbd> bırak · <kbd>Z</kbd> geri al · <kbd>R</kbd> yeni tur · <kbd>M</kbd> ses
+    </p>
+    <button class="cta" id="btnStart">BAŞLA</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheetWin">
+  <div class="card">
+    <div class="halo"></div>
+    <div class="kicker" id="winKick">TUR TAMAMLANDI</div>
+    <h1 id="winTitle">MAGMA<span class="big">TURU ALDI</span></h1>
+    <div class="tally" id="winTally">MAÇ 1 — 0</div>
+    <div class="streak" id="winStreak"></div>
+    <button class="cta" id="btnNext">SONRAKİ TUR</button>
+    <button class="ghost" id="btnSettings">AYARLAR</button>
+  </div>
+</div>
+
+<div id="fps" hidden></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
