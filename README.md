@@ -14,7 +14,8 @@ npm test        # kural motoru, AI ve oda protokolü testleri
 npm run dev     # http://localhost:5173 — kaynak sürüm (ES modülleri)
 npm run build   # dist/index.html üretir (tek dosya, satır içi CSS + JS)
 npm run check   # test + derleme
-npm run net:check   # canlı Firebase odasına uçtan uca denetim (ağ ister)
+npm run net:check    # canlı Firebase odasına uçtan uca denetim (ağ ister)
+npm run net:latency  # hamlenin karşı ekranda görünme süresini ölçer (ağ ister)
 ```
 
 ## Oyun
@@ -65,6 +66,7 @@ tools/
   build.mjs         modülleri tek IIFE'ye derler, CSS'i satır içine alır
   serve.mjs         bağımlılıksız statik sunucu
   net-check.mjs     canlı odaya uçtan uca denetim (ağ ister)
+  net-latency.mjs   hamle gecikmesi ölçümü (ağ ister)
 tests/              node:test ile çalışan kural, AI ve oda testleri
 firestore.rules     oda güvenlik kuralları (dağıtılması gerekir)
 dist/index.html     derlenmiş tek dosya sürüm
@@ -99,11 +101,46 @@ odadaki listeden yeniden kurulur.
 
 Firebase JS SDK yerine düz REST kullanılıyor. Böylece oyun sıfır bağımlılıkta
 kalıyor, tek dosya sürümü hâlâ tek dosya ve yerel modlar ağa hiç çıkmıyor.
-SDK'nın canlı dinleyicisi olmadığı için oda yoklanıyor: sıra rakipteyken ~0,9 sn,
-sıra bendeyken ~2,6 sn, sekme arka plandayken hiç. Her yazma son okunan belgenin
-`updateTime` damgasını koşul olarak gönderir (`currentDocument.updateTime`), yani
-iki istemci aynı anda yazmaya kalkarsa biri reddedilir ve tazeleyip yeniden
-dener — kayıp güncelleme olmaz.
+Her yazma son okunan belgenin `updateTime` damgasını koşul olarak gönderir
+(`currentDocument.updateTime`), yani iki istemci aynı anda yazmaya kalkarsa biri
+reddedilir ve tazeleyip yeniden dener — kayıp güncelleme olmaz.
+
+#### Gecikme ve yoklama temposu
+
+REST'in canlı dinleyicisi olmadığı için oda yoklanıyor; tempo sabit değil, son
+değişiklikten bu yana geçen süreye göre seyreliyor (`POLL_PLAN`):
+
+| son değişiklikten beri | yoklama arası |
+|---|---|
+| 0 – 0,8 sn | 450 ms — rakip hamlemi daha yeni görüyor |
+| 0,8 – 9 sn | **260 ms** — cevabın en olası olduğu pencere |
+| 9 – 30 sn | 700 ms |
+| 30 – 90 sn | 1,5 sn |
+| 90 sn + | 3 sn |
+
+Sıra bendeyken 2,5 sn (yalnız rakibin kopmasını gözlüyoruz), sekme arka
+plandayken hiç. Kritik ayrıntı: **kendi yazımdan hemen sonra tempo sıfırlanıyor.**
+Bu yapılmadığında, hamlemi gönderdikten sonra "sıra bende" döneminden kalan
+seyrek zamanlayıcı devrede kalıyor ve rakibin cevabı 2–3 saniye geç görünüyordu.
+
+`npm run net:latency` bunu gerçek projede ölçer. Aynı ölçüm iyi bağlantılı bir
+makinede (RTT ≈ 0):
+
+| | ortalama | en iyi | en kötü |
+|---|---|---|---|
+| tempo düzeltmesinden önce | 900 ms | 501 ms | 1123 ms |
+| sonra | **396 ms** | 159 ms | 612 ms |
+
+Kalan sürenin neredeyse tamamı iki gidiş-dönüş: gönderenin yazması ve alıcının
+okuması. Telefonda şebeke gecikmesi de eklenir. Yoklamayla bunun altına inmek
+mümkün değil; daha aşağısı için gerçek anlamda **push** gerekir — Realtime
+Database'in REST akışı (`Accept: text/event-stream`) bunu SDK'sız verir ve
+gecikmeyi tek gidiş-dönüşe indirir. Bu depoda yok: proje şu an yalnız Firestore
+kullanıyor.
+
+Maliyet: rakip düşünürken saniyede ~4 okuma. Uzun bir maç iki oyuncu için birkaç
+yüz okuma demek; Firestore'un günlük 50 000 okumalık ücretsiz kotası sıradan
+kullanımda fazlasıyla yetiyor.
 
 Odalar `rooms/{kod}` belgesinde tutulur; kod belge kimliği olduğu için aynı kodu
 iki kişinin alması mümkün değil (çakışan oluşturma isteği atomik olarak reddedilir).

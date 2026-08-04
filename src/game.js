@@ -70,6 +70,8 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
   }
 
   function syncHud(turnChanged) {
+    // Sıra rakipteyse ya da tur bittiyse ondan haber bekliyoruz: hızlı dinle.
+    if (online && net) net.setWaiting(side !== mySide || over || netEnded);
     hud.sync({
       counts: counts(board),
       side, over, round, wins,
