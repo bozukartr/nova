@@ -25,8 +25,18 @@ const TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
 const DOCS = `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
 const AUTH_STORE_KEY = 'nova.net.auth.v1';
 
-export const POLL_FAST = 900;     // sıra rakipte ya da rakip bekleniyor
-export const POLL_SLOW = 2600;    // sıra bende: yalnız kopmayı gözlüyoruz
+/* Yoklama temposu, son değişiklikten bu yana geçen süreye göre seyreliyor.
+ * Rakip hamlemi görüp cevabını yazana kadar ~1 sn geçiyor; asıl sık yoklanacak
+ * pencere o andan sonrası. Uzun düşünen rakipte tempo kendiliğinden düşüyor,
+ * böylece hem gecikme hem istek sayısı makul kalıyor. */
+export const POLL_PLAN = [
+  { after: 0, ms: 450 },        // hamlem yeni gitti, rakip daha yeni görüyor
+  { after: 800, ms: 260 },      // cevabın en olası olduğu pencere
+  { after: 9000, ms: 700 },
+  { after: 30000, ms: 1500 },
+  { after: 90000, ms: 3000 }
+];
+export const POLL_IDLE = 2500;    // sıra bende: yalnız kopmayı gözlüyoruz
 export const SEEN_EVERY = 20000;  // "buradayım" damgası
 export const IDLE_LIMIT = 70000;  // bu kadar sessizlik = bağlantı koptu
 
@@ -46,6 +56,8 @@ export function createNet(opts = {}) {
   let seenAt = 0;
   let onChange = null;
   let onError = null;
+  let waiting = false;      // rakipten haber mi bekliyoruz
+  let lastChange = 0;       // son değişikliği gördüğümüz an (tempo bunu izler)
 
   function memoryStore() {
     let v = null;
@@ -214,13 +226,25 @@ export function createNet(opts = {}) {
     pollTimer = setTimeout(tick, ms);
   }
 
+  /** Sıradaki yoklamaya kaç ms kaldı: bekleyen taraf için plan, diğerinde seyrek. */
+  function nextDelay() {
+    if (!waiting) return POLL_IDLE;
+    const since = now() - lastChange;
+    let ms = POLL_PLAN[0].ms;
+    for (const step of POLL_PLAN) if (since >= step.after) ms = step.ms;
+    return ms;
+  }
+
   async function tick() {
     if (!room) return;
     try {
       const before = JSON.stringify(room);
       await readRoom(room.code);
-      await heartbeat();
-      if (onChange && JSON.stringify(room) !== before) onChange(room);
+      if (JSON.stringify(room) !== before) {
+        lastChange = now();
+        if (onChange) onChange(room);
+      }
+      heartbeat();            // gecikmeye eklenmesin diye beklemeden
     } catch (e) {
       if (e.code === 'not-found') {
         if (onError) onError(new NetError('oda kapandı', 'gone'));
@@ -229,7 +253,7 @@ export function createNet(opts = {}) {
       }
       if (onError) onError(e);
     }
-    if (room) schedule(api.myTurn() ? POLL_SLOW : POLL_FAST);
+    if (room) schedule(nextDelay());
   }
 
   async function heartbeat() {
@@ -240,6 +264,12 @@ export function createNet(opts = {}) {
     try {
       await patch({ [side === 1 ? 'hostSeen' : 'guestSeen']: now() }, { guard: false });
     } catch { /* damga kritik değil */ }
+  }
+
+  /** Kendi yazımızdan sonra tempoyu sıfırlayıp hemen dinlemeye geç. */
+  function rearm() {
+    lastChange = now();
+    if (room) schedule(nextDelay());
   }
 
   const api = {
@@ -272,7 +302,7 @@ export function createNet(opts = {}) {
           });
           absorb(doc);
           seenAt = now();
-          schedule(POLL_FAST);
+          waiting = true; rearm();
           return room;
         } catch (e) {
           if (e.code !== 'exists') throw e;
@@ -293,33 +323,56 @@ export function createNet(opts = {}) {
         ? null
         : { guest: auth.uid, status: 'playing', guestSeen: now() });
       seenAt = now();
-      schedule(POLL_FAST);
+      waiting = true; rearm();
       return room;
     },
 
-    /** Hamleyi listenin sonuna ekler; liste beklediğimden uzunsa reddeder. */
+    /**
+     * Hamleyi listenin sonuna ekler; liste beklediğimden uzunsa reddeder.
+     * Yazdıktan hemen sonra dinleme temposu sıfırlanır: sıra artık rakipte,
+     * onun cevabını eski (seyrek) zamanlayıcıyla beklemek olmaz.
+     */
     async submitMove(index, expectedCount) {
-      return guarded(r => {
+      const res = await guarded(r => {
         if (r.moves.length !== expectedCount) throw new NetError('sıra kaymış', 'stale');
         return { moves: [...r.moves, index] };
       });
+      waiting = true;
+      rearm();
+      return res;
     },
 
     /** Turu ilerletir. İki oyuncu da basabilir: ikincisi çakışmayı görüp geri çekilir. */
     async nextRound(finishedRound, wins) {
-      return guarded(r => {
+      const res = await guarded(r => {
         if (r.round !== finishedRound) return null;      // rakip zaten ilerletti
         return { round: r.round + 1, moves: [], wins1: wins[1], wins2: wins[2] };
       });
+      rearm();
+      return res;
     },
 
     /** Rövanş: kuşak numarası artar, iki istemci de maçı sıfırlar. */
     async rematch(gen) {
-      return guarded(r => {
+      const res = await guarded(r => {
         if (r.gen !== gen) return null;
         return { gen: r.gen + 1, round: 1, moves: [], wins1: 0, wins2: 0, status: 'playing' };
       });
+      rearm();
+      return res;
     },
+
+    /** Oyun katmanı "rakipten haber bekliyorum" der; tempo buna göre seçilir. */
+    setWaiting(value) {
+      const next = !!value;
+      if (next === waiting) return;
+      waiting = next;
+      if (next) rearm();
+      else if (room) schedule(POLL_IDLE);
+    },
+
+    /** Hemen bir yoklama iste (tur bitişi, sekmeye dönüş gibi anlar). */
+    wake() { if (room) schedule(0); },
 
     async leave() {
       stopPolling();
@@ -342,7 +395,7 @@ export function createNet(opts = {}) {
     /** Sekme arka plana düşünce yoklamayı durdur, dönünce hemen tazele. */
     setActive(active) {
       if (!room) return;
-      if (active) schedule(0); else stopPolling();
+      if (active) { lastChange = now(); schedule(0); } else stopPolling();
     },
 
     dispose() { stopPolling(); room = null; onChange = null; onError = null; }
