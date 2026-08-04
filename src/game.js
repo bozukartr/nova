@@ -8,10 +8,12 @@
  */
 
 import {
-  createBoard, snapshot, restore, isLegal, legalMoves, place,
+  createBoard, snapshot, restore, isLegal, legalMoves, place, applyMove,
   criticalCells, detonate, scatter, hasRival, counts, winnerOf
 } from './engine.js';
 import { pickMove } from './ai.js';
+import { createNet, IDLE_LIMIT } from './net.js';
+import { sideOf, starterFor, opponentIdleFor } from './room.js';
 import { SIDES, BOARDS, TRAVEL_MS, SETTLE_MS, AI_SIDE, AI_OFF } from './config.js';
 import { loadSettings, saveSettings } from './storage.js';
 import { sleep, haptic, setHaptics } from './util.js';
@@ -31,6 +33,15 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
   let undoStack = [];
   let cursor = 0, cursorVisible = false;
 
+  /* çevrimiçi oda durumu */
+  let net = null;
+  let online = false, netEnded = false, oppQuiet = false;
+  let mySide = 0;        // odada benim tarafım (1 kurucu, 2 katılan)
+  let applied = 0;       // odadaki hamle listesinden kaçını işledik
+  let netGen = 0;        // maç kuşağı (rövanşta artar)
+  const remoteQueue = [];
+  let pumping = false;
+
   function boardSpec() {
     return BOARDS.find(b => b.key === settings.board) || BOARDS[1];
   }
@@ -38,6 +49,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
   const humanSide = () => (isAI() ? 3 - AI_SIDE : side);
 
   function canUndo() {
+    if (online) return false;               // gönderilmiş hamle geri alınamaz
     if (!started || over || busy || thinking || !undoStack.length) return false;
     if (!isAI()) return true;
     return undoStack.some(e => e.side === humanSide());
@@ -47,7 +59,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
 
   function menuState() {
     return {
-      started, round, wins, stats, over,
+      started, round, wins, stats, over, online,
       matchOver: matchIsOver(),
       level: settings.level,
       board: settings.board,
@@ -64,10 +76,13 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       series: settings.series,
       thinking,
       canUndo: canUndo(),
+      online, mySide, mine: online && side === mySide,
       turnChanged
     });
     if (turnChanged && !over) {
-      hud.say(thinking ? 'Rakip düşünüyor' : SIDES[side].name + ' sırası');
+      hud.say(online
+        ? (side === mySide ? 'Sıra sende' : 'Rakip oynuyor')
+        : (thinking ? 'Rakip düşünüyor' : SIDES[side].name + ' sırası'));
     }
   }
 
@@ -185,9 +200,14 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     return false;
   }
 
-  async function play(i, fromAI) {
+  async function play(i, opts = {}) {
+    const { fromAI = false, fromNet = false } = opts;
     if (!started || busy || over) return;
     if (isAI() && side === AI_SIDE && !fromAI) return;
+    if (online && !fromNet) {
+      if (netEnded) { audio.deny(); hud.toast('ODA KAPANDI'); return; }
+      if (side !== mySide) { audio.deny(); haptic(4); hud.toast('SIRA RAKİPTE'); return; }
+    }
     if (!isLegal(board, side, i)) {
       audio.deny();
       haptic(4);
@@ -195,8 +215,21 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       return;
     }
 
-    undoStack.push({ snap: snapshot(board), side });
-    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    /* Kendi hamlemi hemen oynayıp aynı anda gönderiyorum: dokunuş anında
+       karşılık veriyor, sunucu reddederse tur odadan yeniden kuruluyor. */
+    if (online && !fromNet) {
+      const expected = applied;
+      applied++;
+      net.submitMove(i, expected).catch(err => {
+        hud.toast(netMessage(err), 1800);
+        if (net.room) adoptRound(net.room);
+      });
+    }
+
+    if (!online) {
+      undoStack.push({ snap: snapshot(board), side });
+      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    }
 
     const my = epoch;
     busy = true;
@@ -239,7 +272,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       }
       if (idx < 0) return;
       cursorVisible = false;
-      play(idx, true);
+      play(idx, { fromAI: true });
     }, 380 + Math.random() * 280);
   }
 
@@ -263,6 +296,148 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     syncHud(true);
   }
 
+  /* ── çevrimiçi oda ───────────────────────────────────────────── */
+
+  const NET_MSG = {
+    offline: 'BAĞLANTI YOK',
+    'not-found': 'BÖYLE BİR ODA YOK',
+    full: 'ODA DOLU',
+    gone: 'ODA KAPANMIŞ',
+    own: 'BU SENİN ODAN',
+    'bad-code': 'KOD DÖRT HANELİ OLMALI',
+    denied: 'ERİŞİM REDDEDİLDİ',
+    stale: 'SIRA KAYDI'
+  };
+  const netMessage = e => NET_MSG[e && e.code] || 'BİR ŞEYLER TERS GİTTİ';
+
+  function ensureNet() {
+    if (!net) {
+      net = createNet();
+      net.on(onRoom, onNetError);
+    }
+    return net;
+  }
+
+  /** Odadaki hamle listesinden turu baştan kurar — animasyonsuz, anında. */
+  function adoptRound(room) {
+    epoch++;
+    remoteQueue.length = 0;
+    board = createBoard(boardSpec().rows, boardSpec().cols);
+    renderer.resizeFor(board);
+    renderer.clearFx();
+    hud.hideChain();
+    undoStack = [];
+    busy = false; thinking = false; over = false;
+    side = starterFor(room.round);
+    applied = 0;
+    for (const mv of room.moves) {
+      if (!isLegal(board, side, mv)) break;      // bozuk kayıt: olduğu yerde dur
+      applyMove(board, side, mv);
+      side = 3 - side;
+      applied++;
+    }
+    if (winnerOf(board)) over = true;
+    onLayout();
+    syncHud(true);
+  }
+
+  function startOnline(room) {
+    online = true;
+    started = true;
+    netEnded = false;
+    oppQuiet = false;
+    mySide = sideOf(room, net.uid);
+    settings = saveSettings({ level: AI_OFF, board: room.board, series: room.series });
+    netGen = room.gen;
+    round = room.round;
+    wins = { 1: room.wins1, 2: room.wins2 };
+    streak = { side: 0, count: 0 };
+    adoptRound(room);
+    hud.syncMenu(menuState());
+    hud.closeWin();
+    hud.closeMenu();
+    hud.toast(mySide === 1 ? 'SEN MAGMA’SIN' : 'SEN AURORA’SIN', 1800);
+  }
+
+  /** Rakibin hamleleri sıraya girer, tek tek ve animasyonuyla oynanır. */
+  async function pump() {
+    if (pumping) return;
+    pumping = true;
+    while (remoteQueue.length) {
+      const mv = remoteQueue.shift();
+      if (!isLegal(board, side, mv)) {           // sapma: odadan yeniden kur
+        if (net && net.room) adoptRound(net.room);
+        break;
+      }
+      await play(mv, { fromNet: true });
+    }
+    pumping = false;
+  }
+
+  function onRoom(room) {
+    if (!online) {
+      // Oda ekranında bekliyoruz: rakip girince oyun kendiliğinden başlar.
+      if (room.status === 'playing' && sideOf(room, net.uid)) {
+        hud.setHostWaiting(false);
+        setTimeout(() => { if (!online) startOnline(room); }, 500);
+      }
+      return;
+    }
+
+    if (room.status === 'ended') {
+      if (!netEnded) {
+        netEnded = true;
+        hud.toast('RAKİP ODADAN ÇIKTI', 2400);
+        hud.say('Rakip odadan çıktı');
+        syncHud();
+      }
+      return;
+    }
+    if (room.gen !== netGen || room.round !== round) {
+      const rematch = room.gen !== netGen;
+      netGen = room.gen;
+      round = room.round;
+      wins = { 1: room.wins1, 2: room.wins2 };
+      if (rematch) streak = { side: 0, count: 0 };
+      hud.closeWin();
+      adoptRound(room);
+      return;
+    }
+    if (room.moves.length > applied) {
+      for (let i = applied; i < room.moves.length; i++) remoteQueue.push(room.moves[i]);
+      applied = room.moves.length;
+      pump();
+    }
+
+    const quiet = opponentIdleFor(room, net.uid) > IDLE_LIMIT;
+    if (quiet && !oppQuiet) hud.toast('RAKİPTEN SES YOK', 1800);
+    oppQuiet = quiet;
+    syncHud();
+  }
+
+  function onNetError(e) {
+    if (e.code === 'gone') {
+      netEnded = true;
+      hud.toast('ODA KAPANDI', 2000);
+      syncHud();
+    } else if (e.code === 'offline') {
+      hud.toast('BAĞLANTI YOK', 1600);
+    }
+  }
+
+  function leaveRoom() {
+    const had = online || (net && net.room);
+    online = false;
+    netEnded = false;
+    mySide = 0;
+    applied = 0;
+    remoteQueue.length = 0;
+    if (had) {
+      epoch++;
+      if (net) net.leave().catch(() => { /* ayrılırken hata önemsiz */ });
+    }
+  }
+
   /* ── ayarlar ─────────────────────────────────────────────────── */
 
   function applySettings(patch) {
@@ -277,6 +452,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
 
   /** Menüden oyun başlatma: mod uygulanır ve her hâlükârda yeni maç açılır. */
   function startGame(level) {
+    leaveRoom();                     // yerel oyuna geçerken odayı bırak
     settings = saveSettings({ level });
     started = true;
     hud.syncMenu(menuState());
@@ -293,7 +469,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     const i = renderer.cellAt(e.clientX, e.clientY, board);
     if (i < 0) return;
     cursorVisible = false;
-    play(i, false);
+    play(i);
   }, { passive: true });
 
   /* Klavye desteği masaüstü için sessizce açık: menüde tanıtılmıyor. */
@@ -317,7 +493,7 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       case 'ArrowUp':    cursor = cursor - cols < 0 ? cursor : cursor - cols; cursorVisible = true; break;
       case 'ArrowDown':  cursor = cursor + cols >= board.size ? cursor : cursor + cols; cursorVisible = true; break;
       case ' ':
-      case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor, false); break;
+      case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor); break;
       case 'z': case 'Z': undo(); break;
       case 'r': case 'R': newRound(true); break;
       case 'm': case 'M': api.setSound(!settings.sound); break;
@@ -349,8 +525,19 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
       hud.openMenu(panel);
     },
 
-    restartRound() { newRound(true); },
+    restartRound() {
+      if (online) { hud.toast('ÇEVRİMİÇİ TURDA KAPALI', 1400); return; }
+      newRound(true);
+    },
     nextRound(resetMatch) {
+      if (online) {
+        hud.closeWin();
+        if (netEnded) { hud.toast('ODA KAPANDI', 1600); return; }
+        const req = resetMatch ? net.rematch(netGen) : net.nextRound(round, wins);
+        req.catch(err => hud.toast(netMessage(err), 1800));
+        hud.toast(resetMatch ? 'RÖVANŞ İSTENDİ' : 'RAKİP BEKLENİYOR', 1500);
+        return;
+      }
       if (resetMatch) { newMatch(); return; }
       round++;
       newRound(false);
@@ -358,6 +545,58 @@ export function createGame({ renderer, hud, audio, canvas, onLayout }) {
     newMatch,
     undo,
     applySettings,
+
+    /* ── çevrimiçi ─────────────────────────────────────────── */
+
+    async hostRoom() {
+      hud.netMsg('online', '');
+      hud.setHostBusy(true);
+      try {
+        const client = ensureNet();
+        const room = await client.createRoom({ board: settings.board, series: settings.series });
+        hud.setHostCode(room.code);
+        hud.setHostWaiting(true);
+        hud.netMsg('host', '');
+        hud.showPanel('host', 1);
+      } catch (e) {
+        hud.netMsg('online', netMessage(e), 'bad');
+      } finally {
+        hud.setHostBusy(false);
+      }
+    },
+
+    async joinRoom(code) {
+      hud.netMsg('join', '');
+      hud.setJoinBusy(true);
+      try {
+        const client = ensureNet();
+        const room = await client.joinRoom(code);
+        startOnline(room);
+      } catch (e) {
+        hud.netMsg('join', netMessage(e), 'bad');
+        haptic(20);
+      } finally {
+        hud.setJoinBusy(false);
+      }
+    },
+
+    cancelRoom() {
+      leaveRoom();
+      hud.setHostCode('');
+      hud.setHostWaiting(true);
+      hud.showPanel('online', -1);
+    },
+
+    leaveRoom() {
+      leaveRoom();
+      started = false;
+      hud.syncMenu(menuState());
+      hud.showPanel('home', -1);
+      hud.toast('ODADAN ÇIKILDI', 1400);
+    },
+
+    roomCode() { return net && net.room ? net.room.code : ''; },
+    setNetActive(active) { if (net) net.setActive(active); },
 
     setSound(on) {
       audio.setEnabled(on);

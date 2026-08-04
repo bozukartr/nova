@@ -51,6 +51,10 @@ const tapped = fn => e => { audio.unlock(); haptic(8); fn(e); };
 d.mResume.addEventListener('click', tapped(() => game.resume()));
 d.mPlay2.addEventListener('click', tapped(() => game.playHuman()));
 d.mPlayAI.addEventListener('click', tapped(() => hud.showPanel('ai', 1)));
+d.mOnline.addEventListener('click', tapped(() => {
+  hud.netMsg('online', '');
+  hud.showPanel('online', 1);
+}));
 d.mLearn.addEventListener('click', tapped(() => hud.showPanel('learn', 1)));
 d.mSettings.addEventListener('click', tapped(() => hud.showPanel('settings', 1)));
 
@@ -60,8 +64,51 @@ d.lvStack.addEventListener('click', tapped(e => {
 }));
 
 for (const b of d.menu.querySelectorAll('[data-back]')) {
-  b.addEventListener('click', tapped(() => hud.showPanel('home', -1)));
+  const panel = b.closest('.panel').dataset.panel;
+  // Oda ekranlarından geri dönüş online paneline; oda kurulduysa kapatılır.
+  b.addEventListener('click', tapped(() => {
+    if (panel === 'host') { game.cancelRoom(); return; }
+    hud.showPanel(panel === 'join' ? 'online' : 'home', -1);
+  }));
 }
+
+/* ── çevrimiçi oda ekranları ────────────────────────────────── */
+let codeInput = '';
+
+d.mHost.addEventListener('click', tapped(() => game.hostRoom()));
+d.mJoin.addEventListener('click', tapped(() => {
+  codeInput = '';
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+  hud.showPanel('join', 1);
+}));
+d.btnCancelRoom.addEventListener('click', tapped(() => game.cancelRoom()));
+d.btnLeaveRoom.addEventListener('click', tapped(() => game.leaveRoom()));
+
+d.btnShareCode.addEventListener('click', tapped(async () => {
+  const code = game.roomCode();
+  if (!code) return;
+  const text = `NOVA · Kritik Kütle oda kodu: ${code}`;
+  try {
+    if (navigator.share) await navigator.share({ text });
+    else await navigator.clipboard.writeText(code);
+    hud.netMsg('host', 'KOD KOPYALANDI', 'good');
+  } catch {
+    hud.netMsg('host', 'KOD: ' + code);
+  }
+}));
+
+d.keypad.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const k = b.dataset.k;
+  if (k === 'del') codeInput = codeInput.slice(0, -1);
+  else if (k === 'clear') codeInput = '';
+  else if (codeInput.length < 4) codeInput += k;
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+}));
+d.btnJoinGo.addEventListener('click', tapped(() => game.joinRoom(codeInput)));
 
 d.boardSeg.addEventListener('click', tapped(e => {
   const b = e.target.closest('button');
@@ -116,6 +163,7 @@ function applyTier() {
 
 document.addEventListener('visibilitychange', () => {
   paused = document.hidden;
+  game.setNetActive(!paused);      // arka planda oda yoklaması da dursun
   if (!paused) { last = performance.now(); winStart = last; winWork = winInterval = winFrames = 0; }
 });
 

@@ -8,7 +8,8 @@
     "dev": "node tools/serve.mjs",
     "build": "node tools/build.mjs",
     "test": "node --test tests/*.test.js",
-    "check": "npm test && npm run build"
+    "check": "npm test && npm run build",
+    "net:check": "node tools/net-check.mjs"
   },
   "keywords": ["oyun", "canvas", "webgl", "chain-reaction", "vanilla-js"],
   "license": "MIT"

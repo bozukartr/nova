@@ -263,6 +263,62 @@ canvas{position:fixed;inset:0;display:block}
 .dia .ray.p2{stroke:var(--p2)}
 .dia .num{fill:rgba(255,255,255,.42);font:700 9px 'Syne',sans-serif;text-anchor:middle}
 
+/* ══ online ══ */
+.mbtn.online{--c:#7CC6FF}
+.netmsg{
+  margin-top:14px;min-height:14px;text-align:center;
+  font-size:10px;letter-spacing:.16em;color:var(--dim);transition:color .2s;
+}
+.netmsg.bad{color:var(--p1)}
+.netmsg.good{color:var(--p2)}
+
+.hostbox{
+  margin:auto 0;padding:26px 18px;border-radius:22px;text-align:center;
+  background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  border:1px solid var(--hair);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 24px 40px -30px #000;
+}
+.codebig{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:56px;line-height:1;
+  letter-spacing:.16em;text-indent:.16em;font-variant-numeric:tabular-nums;
+  background:linear-gradient(100deg,var(--p1),#B06CFF 55%,var(--p2));
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+.hostnote{margin-top:14px;font-size:11px;line-height:1.6;color:#9E99C4}
+.waiting{
+  margin-top:18px;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-size:9px;letter-spacing:.24em;color:var(--dim);
+}
+.waiting i{width:5px;height:5px;border-radius:50%;background:var(--p2);opacity:.3;animation:blip 1.2s infinite}
+.waiting i:nth-child(2){animation-delay:.18s}
+.waiting i:nth-child(3){animation-delay:.36s}
+.waiting span{margin-left:5px}
+.waiting.done i{animation:none;opacity:1}
+@keyframes blip{0%,60%,100%{opacity:.25;transform:scale(.85)}30%{opacity:1;transform:scale(1)}}
+
+.code{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:auto 0 0}
+.code b{
+  display:grid;place-items:center;aspect-ratio:1/1.15;border-radius:16px;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:30px;color:var(--bone);
+  background:rgba(255,255,255,.045);border:1px solid var(--hair);
+  transition:border-color .2s,background .2s,transform .12s;
+}
+.code b.filled{border-color:color-mix(in srgb,var(--p2) 45%,transparent);background:color-mix(in srgb,var(--p2) 12%,transparent)}
+.code b.next{border-color:rgba(255,255,255,.3)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:18px 0 0}
+.pad button{
+  padding:15px 0;border-radius:16px;cursor:pointer;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--bone);
+  background:rgba(255,255,255,.05);border:1px solid var(--hair);
+  transition:transform .1s,background .2s;
+}
+.pad button:active{transform:scale(.94);background:rgba(255,255,255,.12)}
+.pad button.pad-ghost{font-size:15px;color:var(--dim);background:transparent}
+.pad button:focus-visible{outline:2px solid var(--cur);outline-offset:3px}
+.cta[disabled]{opacity:.4;pointer-events:none}
+.ghost[hidden]{display:none}
+
 .panel .seglbl{margin-top:18px}
 .panel .phead + .seglbl{margin-top:0}
 .note{font-size:9.5px;letter-spacing:.08em;color:#4A4670;margin-top:11px;line-height:1.6}
@@ -361,7 +417,7 @@ canvas{position:fixed;inset:0;display:block}
 <div class="ui">
   <div class="hud">
     <div class="pod p1 live" id="pod1" style="--c:var(--p1)">
-      <div class="pname">MAGMA</div>
+      <div class="pname">MAGMA<span class="ai" id="you1" hidden>SEN</span></div>
       <div class="pcores" id="core1">00</div>
       <div class="pips" id="pips1"></div>
     </div>
@@ -371,7 +427,7 @@ canvas{position:fixed;inset:0;display:block}
       <div class="lbl" id="seriesLbl">İLK 3</div>
     </div>
     <div class="pod p2" id="pod2" style="--c:var(--p2)">
-      <div class="pname">AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
+      <div class="pname"><span class="ai" id="you2" hidden>SEN</span>AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
       <div class="pcores" id="core2">00</div>
       <div class="pips" id="pips2"></div>
     </div>
@@ -429,6 +485,12 @@ canvas{position:fixed;inset:0;display:block}
           <span class="chev" aria-hidden="true">›</span>
         </button>
 
+        <button class="mbtn online" id="mOnline">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c4.4 4.6 4.4 11.8 0 16.8-4.4-5-4.4-12.2 0-16.8z"/></svg></span>
+          <span class="txt"><span class="t">OYNA ONLINE</span><span class="s">ODA KUR VEYA KODLA KATIL</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+
         <button class="mbtn" id="mLearn">
           <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6 21 8l-9 4.4L3 8z"/><path d="M6 10.2V15c0 1.9 2.9 3.2 6 3.2s6-1.3 6-3.2v-4.8"/></svg></span>
           <span class="txt"><span class="t">ÖĞREN</span><span class="s">30 SANİYEDE KURALLAR</span></span>
@@ -442,7 +504,70 @@ canvas{position:fixed;inset:0;display:block}
         </button>
       </nav>
 
+      <button class="ghost" id="btnLeaveRoom" hidden>ODADAN ÇIK</button>
       <p class="foot" id="menuFoot"></p>
+    </section>
+
+    <section class="panel" data-panel="online" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>ONLINE</h2>
+      </div>
+      <div class="stack">
+        <button class="mbtn magma" id="mHost">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="txt"><span class="t">ODA KUR</span><span class="s">DÖRT HANELİ KOD ÜRET</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+        <button class="mbtn aurora" id="mJoin">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M4 12h11M11.5 8.5 15 12l-3.5 3.5"/></svg></span>
+          <span class="txt"><span class="t">ODAYA KATIL</span><span class="s">RAKİBİNİN KODUNU GİR</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+      </div>
+      <p class="note">Aynı odadaki iki telefon da internete bağlı olmalı. Tahta ve seri ayarını odayı kuran belirler.</p>
+      <p class="netmsg" id="onlineMsg"></p>
+    </section>
+
+    <section class="panel" data-panel="host" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>ODA KODU</h2>
+      </div>
+      <div class="hostbox">
+        <div class="codebig" id="hostCode">····</div>
+        <p class="hostnote">Bu kodu rakibine ilet, katılınca oyun kendiliğinden başlar.</p>
+        <p class="waiting" id="hostWait"><i></i><i></i><i></i><span>RAKİP BEKLENİYOR</span></p>
+      </div>
+      <p class="netmsg" id="hostMsg"></p>
+      <button class="cta" id="btnShareCode">KODU KOPYALA</button>
+      <button class="ghost" id="btnCancelRoom">ODAYI KAPAT</button>
+    </section>
+
+    <section class="panel" data-panel="join" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>KODLA KATIL</h2>
+      </div>
+      <div class="code" id="codeBoxes" aria-label="Dört haneli oda kodu">
+        <b></b><b></b><b></b><b></b>
+      </div>
+      <p class="netmsg" id="joinMsg"></p>
+      <div class="pad" id="keypad">
+        <button type="button" data-k="1">1</button>
+        <button type="button" data-k="2">2</button>
+        <button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button>
+        <button type="button" data-k="5">5</button>
+        <button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button>
+        <button type="button" data-k="8">8</button>
+        <button type="button" data-k="9">9</button>
+        <button type="button" class="pad-ghost" data-k="clear">C</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" class="pad-ghost" data-k="del">⌫</button>
+      </div>
+      <button class="cta" id="btnJoinGo" disabled>KATIL</button>
     </section>
 
     <section class="panel" data-panel="ai" hidden>
@@ -1348,6 +1473,8 @@ function createHud() {
     aiBadge: el('aiBadge'),
     tugA: el('tugA'), tugB: el('tugB'), tugKnob: el('tugKnob'),
     turnPill: el('turnPill'), turnWho: el('turnWho'),
+    turnSub: document.querySelector('.turn .sub'),
+    you1: el('you1'), you2: el('you2'),
     chain: el('chain'), chainN: el('chainN'),
     toast: el('toast'), live: el('live'), fps: el('fps'),
 
@@ -1358,6 +1485,12 @@ function createHud() {
     mResume: el('mResume'), mResumeT: el('mResumeT'), mResumeSub: el('mResumeSub'),
     mPlay2: el('mPlay2'), mPlayAI: el('mPlayAI'), mAISub: el('mAISub'),
     mLearn: el('mLearn'), mSettings: el('mSettings'), mSetSub: el('mSetSub'),
+    mOnline: el('mOnline'), btnLeaveRoom: el('btnLeaveRoom'),
+    mHost: el('mHost'), mJoin: el('mJoin'),
+    onlineMsg: el('onlineMsg'), hostMsg: el('hostMsg'), joinMsg: el('joinMsg'),
+    hostCode: el('hostCode'), hostWait: el('hostWait'),
+    btnShareCode: el('btnShareCode'), btnCancelRoom: el('btnCancelRoom'),
+    codeBoxes: el('codeBoxes'), keypad: el('keypad'), btnJoinGo: el('btnJoinGo'),
     menuFoot: el('menuFoot'), lvStack: el('lvStack'),
     boardSeg: el('boardSeg'), seriesSeg: el('seriesSeg'),
     swSound: el('swSound'), swHaptic: el('swHaptic'),
@@ -1499,11 +1632,51 @@ function createHud() {
       dom.swSound.setAttribute('aria-checked', String(state.sound));
       dom.swHaptic.setAttribute('aria-checked', String(state.haptics));
 
-      dom.aiBadge.hidden = state.level === AI_OFF;
+      dom.btnLeaveRoom.hidden = !state.online;
+      dom.aiBadge.hidden = state.level === AI_OFF || state.online;
       dom.btnSound.textContent = state.sound ? '♪' : '♪̸';
       dom.btnSound.classList.toggle('off', !state.sound);
       dom.btnSound.setAttribute('aria-pressed', String(state.sound));
       dom.seriesLbl.textContent = labelOf(SERIES, state.series);
+    },
+
+    /* ── online panelleri ───────────────────────────────────── */
+
+    /** which: 'online' | 'host' | 'join' · kind: '' | 'bad' | 'good' */
+    netMsg(which, text = '', kind = '') {
+      const node = dom[which + 'Msg'];
+      if (!node) return;
+      node.textContent = text;
+      node.className = 'netmsg' + (kind ? ' ' + kind : '');
+    },
+
+    setHostCode(code) { dom.hostCode.textContent = code || '····'; },
+
+    setHostWaiting(waiting, text) {
+      dom.hostWait.classList.toggle('done', !waiting);
+      dom.hostWait.querySelector('span').textContent =
+        text || (waiting ? 'RAKİP BEKLENİYOR' : 'RAKİP GELDİ');
+    },
+
+    /** Kod kutularını doldurur ve KATIL düğmesini uygunluğa göre açar. */
+    setCodeInput(value) {
+      const digits = String(value || '');
+      [...dom.codeBoxes.children].forEach((box, i) => {
+        box.textContent = digits[i] || '';
+        box.classList.toggle('filled', !!digits[i]);
+        box.classList.toggle('next', i === digits.length);
+      });
+      dom.btnJoinGo.disabled = digits.length !== 4;
+    },
+
+    setJoinBusy(busy) {
+      dom.btnJoinGo.disabled = busy || [...dom.codeBoxes.children].some(b => !b.textContent);
+      dom.btnJoinGo.textContent = busy ? 'KATILIYOR…' : 'KATIL';
+    },
+
+    setHostBusy(busy) {
+      dom.mHost.disabled = busy;
+      dom.mHost.querySelector('.s').textContent = busy ? 'ODA AÇILIYOR…' : 'DÖRT HANELİ KOD ÜRET';
     },
 
     /* ── oyun içi HUD ───────────────────────────────────────── */
@@ -1521,8 +1694,15 @@ function createHud() {
       dom.pod1.classList.toggle('live', state.side === 1 && !state.over);
       dom.pod2.classList.toggle('live', state.side === 2 && !state.over);
       dom.roundNo.textContent = pad2(state.round);
-      dom.turnWho.textContent = state.thinking ? 'DÜŞÜNÜYOR' : SIDES[state.side].name;
+      /* Çevrimiçi oyunda taraf adı yerine "sıra kimde" bilgisi daha yararlı. */
+      dom.turnWho.textContent = state.online
+        ? (state.mine ? 'SIRA SENDE' : 'RAKİP OYNUYOR')
+        : (state.thinking ? 'DÜŞÜNÜYOR' : SIDES[state.side].name);
+      if (dom.turnSub) dom.turnSub.hidden = !!state.online;
+      dom.you1.hidden = !(state.online && state.mySide === 1);
+      dom.you2.hidden = !(state.online && state.mySide === 2);
       dom.btnUndo.disabled = !state.canUndo;
+      dom.btnNew.disabled = !!state.online;
 
       for (const p of [1, 2]) {
         const box = dom['pips' + p];
@@ -1929,6 +2109,504 @@ function pickMove(board, side, level, opts = {}) {
 }
 
 
+/* ── src/firebase-config.js ── */
+/* NOVA · Firebase projesi
+ *
+ * Buradaki anahtarlar gizli değil: Firebase web anahtarı bir kimlik, bir sır
+ * değil — istemciye zaten açık gider. Güvenlik tamamen Firestore kurallarından
+ * gelir; depodaki firestore.rules dosyasını dağıtmadan odalar herkese açıktır.
+ *
+ * Oyun bu projeye yalnız çevrimiçi oda için bağlanır. Tek telefon ve AI modları
+ * ağa hiç çıkmaz.
+ */
+
+const FIREBASE = {
+  apiKey: 'AIzaSyAsB1hZ6aZkuNv_xVCukJSPY-OTrC4tlmg',
+  authDomain: 'nov4star.firebaseapp.com',
+  projectId: 'nov4star',
+  storageBucket: 'nov4star.firebasestorage.app',
+  messagingSenderId: '487186941239',
+  appId: '1:487186941239:web:951647f83169d032e106b2',
+  measurementId: 'G-Y23N5MWLB7'
+};
+
+/** Odanın kaç saat sonra ölü sayılacağı (Firestore TTL ile temizlenir). */
+const ROOM_TTL_HOURS = 6;
+
+
+/* ── src/room.js ── */
+/* NOVA · çevrimiçi oda protokolü — saf mantık ve Firestore değer kodlaması.
+ *
+ * Ağ yok, DOM yok: burada yalnız "oda belgesi nasıl görünür, sıra kimde,
+ * hangi hamle geçerli" soruları var. net.js bunu HTTP'ye, game.js oyuna bağlar.
+ *
+ * Tahta durumu odada tutulmaz; yalnız **hamle listesi** taşınır. Kural motoru
+ * saf ve deterministik olduğu için iki istemci aynı listeden bit bit aynı
+ * tahtayı üretir. Bu sayede senkron sorunu diye bir şey kalmaz, üstelik bir tur
+ * baştan oynatılabilir hâle gelir.
+ */
+
+const CODE_RE = /^[0-9]{4}$/;
+
+const isValidCode = code => CODE_RE.test(String(code || ''));
+
+/** 1000–9999 arası oda kodu. */
+function randomCode(rng = Math.random) {
+  return String(1000 + Math.floor(rng() * 9000));
+}
+
+function newRoom({ code, host, board, series, now = Date.now() }) {
+  return {
+    code: String(code),
+    host,
+    guest: null,
+    board,
+    series,
+    status: 'waiting',      // waiting → playing → ended
+    gen: 1,                 // maç kuşağı: rövanşta artar
+    round: 1,
+    wins1: 0,
+    wins2: 0,
+    moves: [],              // bu turun hamleleri, sırayla hücre indisleri
+    createdAt: now,
+    hostSeen: now,
+    guestSeen: 0
+  };
+}
+
+/** Oyuncunun tarafı: kurucu MAGMA (1), katılan AURORA (2), yabancı 0. */
+function sideOf(room, uid) {
+  if (!room || !uid) return 0;
+  if (room.host === uid) return 1;
+  if (room.guest === uid) return 2;
+  return 0;
+}
+
+/** Turu kim açar: turlar sırayla el değiştirir (tek telefondaki kuralla aynı). */
+const starterFor = round => (round % 2 === 1 ? 1 : 2);
+
+/** Sıradaki taraf, hamle sayısından türetilir. */
+function turnOf(room) {
+  const starter = starterFor(room.round);
+  return (room.moves.length % 2 === 0) ? starter : 3 - starter;
+}
+
+function isMyTurn(room, uid) {
+  if (!room || room.status !== 'playing') return false;
+  const side = sideOf(room, uid);
+  return side !== 0 && side === turnOf(room);
+}
+
+/** Hamle gönderilebilir mi: sıra bende ve elimdeki liste sunucudakiyle aynı mı. */
+function canSubmit(room, uid, expectedCount) {
+  return isMyTurn(room, uid) && room.moves.length === expectedCount;
+}
+
+/** Rakibin son işareti ne kadar eski (ms). Hiç görülmediyse Infinity. */
+function opponentIdleFor(room, uid, now = Date.now()) {
+  const side = sideOf(room, uid);
+  if (!side) return Infinity;
+  const seen = side === 1 ? room.guestSeen : room.hostSeen;
+  return seen ? now - seen : Infinity;
+}
+
+/* ── Firestore REST değer kodlaması ─────────────────────────────
+   SDK yerine düz REST kullanıldığı için tipli değerleri kendimiz
+   çeviriyoruz. Bu sayede oyun sıfır bağımlılıkta kalıyor.        */
+
+function toValue(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') {
+    return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  }
+  if (typeof v === 'string') return { stringValue: v };
+  if (Array.isArray(v)) {
+    return v.length ? { arrayValue: { values: v.map(toValue) } } : { arrayValue: {} };
+  }
+  if (typeof v === 'object') return { mapValue: { fields: toFields(v) } };
+  throw new Error('desteklenmeyen alan tipi: ' + typeof v);
+}
+
+function toFields(obj) {
+  const fields = {};
+  for (const [k, v] of Object.entries(obj)) fields[k] = toValue(v);
+  return fields;
+}
+
+function fromValue(val) {
+  if (!val || typeof val !== 'object') return null;
+  if ('nullValue' in val) return null;
+  if ('booleanValue' in val) return val.booleanValue;
+  if ('integerValue' in val) return Number(val.integerValue);
+  if ('doubleValue' in val) return Number(val.doubleValue);
+  if ('stringValue' in val) return val.stringValue;
+  if ('timestampValue' in val) return Date.parse(val.timestampValue);
+  if ('arrayValue' in val) return (val.arrayValue.values || []).map(fromValue);
+  if ('mapValue' in val) return fromFields(val.mapValue.fields || {});
+  return null;
+}
+
+function fromFields(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields || {})) out[k] = fromValue(v);
+  return out;
+}
+
+
+/* ── src/net.js ── */
+/* NOVA · çevrimiçi oda istemcisi
+ *
+ * Firebase JS SDK yerine düz REST kullanılıyor:
+ *   · oyun sıfır bağımlılıkta kalıyor, tek dosya sürümü hâlâ tek dosya,
+ *   · CDN'e bağlı değiliz; tek telefon ve AI modları ağa hiç çıkmıyor,
+ *   · anonim giriş tek POST, oda belgesi tek GET/PATCH.
+ *
+ * SDK'nın canlı dinleyicisi olmadığı için oda yoklanır. Sıra rakipteyken
+ * sık, bendeyken seyrek: sıra tabanlı bir oyunda fark edilmez, yazma/okuma
+ * maliyeti ise düşük kalır.
+ *
+ * Eşzamanlılık: her yazma, son okunan belgenin `updateTime` damgasını koşul
+ * olarak gönderir (Firestore `currentDocument.updateTime`). İki istemci aynı
+ * anda yazmaya kalkarsa biri reddedilir ve tazeleyip yeniden dener — kayıp
+ * güncelleme olmaz.
+ */
+
+
+
+
+const AUTH_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
+const TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
+const DOCS = `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
+const AUTH_STORE_KEY = 'nova.net.auth.v1';
+
+const POLL_FAST = 900;     // sıra rakipte ya da rakip bekleniyor
+const POLL_SLOW = 2600;    // sıra bende: yalnız kopmayı gözlüyoruz
+const SEEN_EVERY = 20000;  // "buradayım" damgası
+const IDLE_LIMIT = 70000;  // bu kadar sessizlik = bağlantı koptu
+
+class NetError extends Error {
+  constructor(message, code) { super(message); this.code = code; }
+}
+
+function createNet(opts = {}) {
+  const doFetch = opts.fetch || ((...a) => globalThis.fetch(...a));
+  const now = opts.now || (() => Date.now());
+  const store = opts.store || (typeof localStorage !== 'undefined' ? browserStore() : memoryStore());
+
+  let auth = null;          // { uid, idToken, refreshToken, expiresAt }
+  let room = null;          // son okunan oda (düz nesne)
+  let updateTime = null;    // son okunan belgenin damgası
+  let pollTimer = null;
+  let seenAt = 0;
+  let onChange = null;
+  let onError = null;
+
+  function memoryStore() {
+    let v = null;
+    return { get: () => v, set: x => { v = x; } };
+  }
+
+  /** Anonim kimlik tarayıcıda saklanır: sayfa yenilense de aynı oyuncuyuz. */
+  function browserStore() {
+    try {
+      localStorage.setItem(AUTH_STORE_KEY + '.probe', '1');
+      localStorage.removeItem(AUTH_STORE_KEY + '.probe');
+      return {
+        get() {
+          try { return JSON.parse(localStorage.getItem(AUTH_STORE_KEY) || 'null'); } catch { return null; }
+        },
+        set(v) {
+          try { localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(v)); } catch { /* kota */ }
+        }
+      };
+    } catch {
+      return memoryStore();
+    }
+  }
+
+  /** Ağ yoksa istek sonsuza kadar asılı kalmasın: kullanıcı yanıt bekliyor. */
+  const REQUEST_TIMEOUT = 9000;
+
+  async function json(url, init = {}) {
+    let res;
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT) : null;
+    try {
+      res = await doFetch(url, ctrl ? { ...init, signal: ctrl.signal } : init);
+    } catch (e) {
+      throw new NetError('bağlantı kurulamadı', 'offline');
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+    if (!res.ok) {
+      const status = body && body.error && body.error.status;
+      throw new NetError(
+        (body && body.error && body.error.message) || 'istek başarısız',
+        res.status === 404 ? 'not-found'
+          : res.status === 409 || status === 'ALREADY_EXISTS' ? 'exists'
+            : res.status === 400 && status === 'FAILED_PRECONDITION' ? 'conflict'
+              : status === 'FAILED_PRECONDITION' ? 'conflict'
+                : res.status === 401 || res.status === 403 ? 'denied'
+                  : 'error'
+      );
+    }
+    return body;
+  }
+
+  /* ── kimlik ─────────────────────────────────────────────── */
+
+  async function signIn() {
+    const saved = store.get();
+    if (saved && saved.refreshToken) {
+      auth = saved;
+      if (auth.expiresAt - now() > 60000) return auth;
+      try { return await refresh(); } catch { /* yenilenemedi: yeni hesap */ }
+    }
+    const body = await json(`${AUTH_URL}?key=${FIREBASE.apiKey}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ returnSecureToken: true })
+    });
+    auth = {
+      uid: body.localId,
+      idToken: body.idToken,
+      refreshToken: body.refreshToken,
+      expiresAt: now() + Number(body.expiresIn || 3600) * 1000
+    };
+    store.set(auth);
+    return auth;
+  }
+
+  async function refresh() {
+    const body = await json(`${TOKEN_URL}?key=${FIREBASE.apiKey}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(auth.refreshToken)}`
+    });
+    auth = {
+      uid: body.user_id || auth.uid,
+      idToken: body.id_token,
+      refreshToken: body.refresh_token,
+      expiresAt: now() + Number(body.expires_in || 3600) * 1000
+    };
+    store.set(auth);
+    return auth;
+  }
+
+  async function authed(url, init = {}, retry = true) {
+    if (!auth) await signIn();
+    if (auth.expiresAt - now() < 60000) await refresh();
+    try {
+      return await json(url, {
+        ...init,
+        headers: { ...(init.headers || {}), authorization: `Bearer ${auth.idToken}` }
+      });
+    } catch (e) {
+      if (e.code === 'denied' && retry) {   // jeton eskimişse bir kez tazele
+        await refresh();
+        return authed(url, init, false);
+      }
+      throw e;
+    }
+  }
+
+  /* ── oda belgesi ────────────────────────────────────────── */
+
+  const docUrl = code => `${DOCS}/rooms/${code}`;
+
+  function absorb(doc) {
+    room = fromFields(doc.fields);
+    updateTime = doc.updateTime;
+    return room;
+  }
+
+  async function readRoom(code) {
+    const doc = await authed(docUrl(code));
+    return absorb(doc);
+  }
+
+  /** Alan güncellemesi; belge son okuduğumuzdan beri değiştiyse 'conflict'. */
+  async function patch(fields, { guard = true } = {}) {
+    const mask = Object.keys(fields).map(f => `updateMask.fieldPaths=${f}`).join('&');
+    const cond = guard && updateTime
+      ? `&currentDocument.updateTime=${encodeURIComponent(updateTime)}`
+      : '';
+    const doc = await authed(`${docUrl(room.code)}?${mask}${cond}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ fields: toFields(fields) })
+    });
+    return absorb(doc);
+  }
+
+  /** Çakışmada odayı tazeleyip yeniden dener. */
+  async function guarded(build, tries = 3) {
+    for (let i = 0; i < tries; i++) {
+      const fields = build(room);
+      if (!fields) return room;
+      try {
+        return await patch(fields);
+      } catch (e) {
+        if (e.code !== 'conflict' || i === tries - 1) throw e;
+        await readRoom(room.code);
+      }
+    }
+    return room;
+  }
+
+  /* ── genel arayüz ───────────────────────────────────────── */
+
+  function stopPolling() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  }
+
+  function schedule(ms) {
+    stopPolling();
+    pollTimer = setTimeout(tick, ms);
+  }
+
+  async function tick() {
+    if (!room) return;
+    try {
+      const before = JSON.stringify(room);
+      await readRoom(room.code);
+      await heartbeat();
+      if (onChange && JSON.stringify(room) !== before) onChange(room);
+    } catch (e) {
+      if (e.code === 'not-found') {
+        if (onError) onError(new NetError('oda kapandı', 'gone'));
+        stopPolling();
+        return;
+      }
+      if (onError) onError(e);
+    }
+    if (room) schedule(api.myTurn() ? POLL_SLOW : POLL_FAST);
+  }
+
+  async function heartbeat() {
+    if (!room || now() - seenAt < SEEN_EVERY) return;
+    const side = sideOf(room, auth.uid);
+    if (!side) return;
+    seenAt = now();
+    try {
+      await patch({ [side === 1 ? 'hostSeen' : 'guestSeen']: now() }, { guard: false });
+    } catch { /* damga kritik değil */ }
+  }
+
+  const api = {
+    get uid() { return auth ? auth.uid : null; },
+    get room() { return room; },
+    get side() { return sideOf(room, auth && auth.uid); },
+    myTurn() {
+      if (!room || room.status !== 'playing') return false;
+      const starter = room.round % 2 === 1 ? 1 : 2;
+      const turn = room.moves.length % 2 === 0 ? starter : 3 - starter;
+      return api.side !== 0 && api.side === turn;
+    },
+
+    signIn,
+
+    on(change, error) { onChange = change; onError = error; },
+
+    /** Boş bir kod bulana kadar dener; kod belge kimliği olduğu için çakışma atomik. */
+    async createRoom({ board, series }) {
+      await signIn();
+      for (let i = 0; i < 8; i++) {
+        const code = randomCode();
+        const fresh = newRoom({ code, host: auth.uid, board, series, now: now() });
+        fresh.expiresAt = now() + ROOM_TTL_HOURS * 3600 * 1000;
+        try {
+          const doc = await authed(`${DOCS}/rooms?documentId=${code}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ fields: toFields(fresh) })
+          });
+          absorb(doc);
+          seenAt = now();
+          schedule(POLL_FAST);
+          return room;
+        } catch (e) {
+          if (e.code !== 'exists') throw e;
+        }
+      }
+      throw new NetError('boş oda kodu bulunamadı', 'error');
+    },
+
+    async joinRoom(code) {
+      if (!isValidCode(code)) throw new NetError('kod dört haneli olmalı', 'bad-code');
+      await signIn();
+      await readRoom(code);
+      // Sıra önemli: kapanmış oda, dolu odadan önce gelir.
+      if (room.status === 'ended') throw new NetError('oda kapanmış', 'gone');
+      if (room.host === auth.uid) throw new NetError('bu senin odan', 'own');
+      if (room.guest && room.guest !== auth.uid) throw new NetError('oda dolu', 'full');
+      await guarded(r => (r.guest === auth.uid && r.status === 'playing')
+        ? null
+        : { guest: auth.uid, status: 'playing', guestSeen: now() });
+      seenAt = now();
+      schedule(POLL_FAST);
+      return room;
+    },
+
+    /** Hamleyi listenin sonuna ekler; liste beklediğimden uzunsa reddeder. */
+    async submitMove(index, expectedCount) {
+      return guarded(r => {
+        if (r.moves.length !== expectedCount) throw new NetError('sıra kaymış', 'stale');
+        return { moves: [...r.moves, index] };
+      });
+    },
+
+    /** Turu ilerletir. İki oyuncu da basabilir: ikincisi çakışmayı görüp geri çekilir. */
+    async nextRound(finishedRound, wins) {
+      return guarded(r => {
+        if (r.round !== finishedRound) return null;      // rakip zaten ilerletti
+        return { round: r.round + 1, moves: [], wins1: wins[1], wins2: wins[2] };
+      });
+    },
+
+    /** Rövanş: kuşak numarası artar, iki istemci de maçı sıfırlar. */
+    async rematch(gen) {
+      return guarded(r => {
+        if (r.gen !== gen) return null;
+        return { gen: r.gen + 1, round: 1, moves: [], wins1: 0, wins2: 0, status: 'playing' };
+      });
+    },
+
+    async leave() {
+      stopPolling();
+      const current = room;
+      room = null;
+      if (!current || !auth) return;
+      try {
+        if (current.host === auth.uid) {
+          await authed(`${DOCS}/rooms/${current.code}`, { method: 'DELETE' });
+        } else {
+          room = current;
+          await guarded(() => ({ status: 'ended' }));
+          room = null;
+        }
+      } catch {
+        room = null;                                     // ayrılırken hata önemsiz
+      }
+    },
+
+    /** Sekme arka plana düşünce yoklamayı durdur, dönünce hemen tazele. */
+    setActive(active) {
+      if (!room) return;
+      if (active) schedule(0); else stopPolling();
+    },
+
+    dispose() { stopPolling(); room = null; onChange = null; onError = null; }
+  };
+
+  return api;
+}
+
+
 /* ── src/storage.js ── */
 /* NOVA · ayar kalıcılığı — localStorage kapalıysa (gizli sekme, iframe) sessizce bellekte kalır. */
 
@@ -1988,6 +2666,8 @@ function saveSettings(patch) {
 
 
 
+
+
 const UNDO_LIMIT = 80;
 
 function createGame({ renderer, hud, audio, canvas, onLayout }) {
@@ -2003,6 +2683,15 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
   let undoStack = [];
   let cursor = 0, cursorVisible = false;
 
+  /* çevrimiçi oda durumu */
+  let net = null;
+  let online = false, netEnded = false, oppQuiet = false;
+  let mySide = 0;        // odada benim tarafım (1 kurucu, 2 katılan)
+  let applied = 0;       // odadaki hamle listesinden kaçını işledik
+  let netGen = 0;        // maç kuşağı (rövanşta artar)
+  const remoteQueue = [];
+  let pumping = false;
+
   function boardSpec() {
     return BOARDS.find(b => b.key === settings.board) || BOARDS[1];
   }
@@ -2010,6 +2699,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
   const humanSide = () => (isAI() ? 3 - AI_SIDE : side);
 
   function canUndo() {
+    if (online) return false;               // gönderilmiş hamle geri alınamaz
     if (!started || over || busy || thinking || !undoStack.length) return false;
     if (!isAI()) return true;
     return undoStack.some(e => e.side === humanSide());
@@ -2019,7 +2709,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
 
   function menuState() {
     return {
-      started, round, wins, stats, over,
+      started, round, wins, stats, over, online,
       matchOver: matchIsOver(),
       level: settings.level,
       board: settings.board,
@@ -2036,10 +2726,13 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
       series: settings.series,
       thinking,
       canUndo: canUndo(),
+      online, mySide, mine: online && side === mySide,
       turnChanged
     });
     if (turnChanged && !over) {
-      hud.say(thinking ? 'Rakip düşünüyor' : SIDES[side].name + ' sırası');
+      hud.say(online
+        ? (side === mySide ? 'Sıra sende' : 'Rakip oynuyor')
+        : (thinking ? 'Rakip düşünüyor' : SIDES[side].name + ' sırası'));
     }
   }
 
@@ -2157,9 +2850,14 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
     return false;
   }
 
-  async function play(i, fromAI) {
+  async function play(i, opts = {}) {
+    const { fromAI = false, fromNet = false } = opts;
     if (!started || busy || over) return;
     if (isAI() && side === AI_SIDE && !fromAI) return;
+    if (online && !fromNet) {
+      if (netEnded) { audio.deny(); hud.toast('ODA KAPANDI'); return; }
+      if (side !== mySide) { audio.deny(); haptic(4); hud.toast('SIRA RAKİPTE'); return; }
+    }
     if (!isLegal(board, side, i)) {
       audio.deny();
       haptic(4);
@@ -2167,8 +2865,21 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
       return;
     }
 
-    undoStack.push({ snap: snapshot(board), side });
-    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    /* Kendi hamlemi hemen oynayıp aynı anda gönderiyorum: dokunuş anında
+       karşılık veriyor, sunucu reddederse tur odadan yeniden kuruluyor. */
+    if (online && !fromNet) {
+      const expected = applied;
+      applied++;
+      net.submitMove(i, expected).catch(err => {
+        hud.toast(netMessage(err), 1800);
+        if (net.room) adoptRound(net.room);
+      });
+    }
+
+    if (!online) {
+      undoStack.push({ snap: snapshot(board), side });
+      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    }
 
     const my = epoch;
     busy = true;
@@ -2211,7 +2922,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
       }
       if (idx < 0) return;
       cursorVisible = false;
-      play(idx, true);
+      play(idx, { fromAI: true });
     }, 380 + Math.random() * 280);
   }
 
@@ -2235,6 +2946,148 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
     syncHud(true);
   }
 
+  /* ── çevrimiçi oda ───────────────────────────────────────────── */
+
+  const NET_MSG = {
+    offline: 'BAĞLANTI YOK',
+    'not-found': 'BÖYLE BİR ODA YOK',
+    full: 'ODA DOLU',
+    gone: 'ODA KAPANMIŞ',
+    own: 'BU SENİN ODAN',
+    'bad-code': 'KOD DÖRT HANELİ OLMALI',
+    denied: 'ERİŞİM REDDEDİLDİ',
+    stale: 'SIRA KAYDI'
+  };
+  const netMessage = e => NET_MSG[e && e.code] || 'BİR ŞEYLER TERS GİTTİ';
+
+  function ensureNet() {
+    if (!net) {
+      net = createNet();
+      net.on(onRoom, onNetError);
+    }
+    return net;
+  }
+
+  /** Odadaki hamle listesinden turu baştan kurar — animasyonsuz, anında. */
+  function adoptRound(room) {
+    epoch++;
+    remoteQueue.length = 0;
+    board = createBoard(boardSpec().rows, boardSpec().cols);
+    renderer.resizeFor(board);
+    renderer.clearFx();
+    hud.hideChain();
+    undoStack = [];
+    busy = false; thinking = false; over = false;
+    side = starterFor(room.round);
+    applied = 0;
+    for (const mv of room.moves) {
+      if (!isLegal(board, side, mv)) break;      // bozuk kayıt: olduğu yerde dur
+      applyMove(board, side, mv);
+      side = 3 - side;
+      applied++;
+    }
+    if (winnerOf(board)) over = true;
+    onLayout();
+    syncHud(true);
+  }
+
+  function startOnline(room) {
+    online = true;
+    started = true;
+    netEnded = false;
+    oppQuiet = false;
+    mySide = sideOf(room, net.uid);
+    settings = saveSettings({ level: AI_OFF, board: room.board, series: room.series });
+    netGen = room.gen;
+    round = room.round;
+    wins = { 1: room.wins1, 2: room.wins2 };
+    streak = { side: 0, count: 0 };
+    adoptRound(room);
+    hud.syncMenu(menuState());
+    hud.closeWin();
+    hud.closeMenu();
+    hud.toast(mySide === 1 ? 'SEN MAGMA’SIN' : 'SEN AURORA’SIN', 1800);
+  }
+
+  /** Rakibin hamleleri sıraya girer, tek tek ve animasyonuyla oynanır. */
+  async function pump() {
+    if (pumping) return;
+    pumping = true;
+    while (remoteQueue.length) {
+      const mv = remoteQueue.shift();
+      if (!isLegal(board, side, mv)) {           // sapma: odadan yeniden kur
+        if (net && net.room) adoptRound(net.room);
+        break;
+      }
+      await play(mv, { fromNet: true });
+    }
+    pumping = false;
+  }
+
+  function onRoom(room) {
+    if (!online) {
+      // Oda ekranında bekliyoruz: rakip girince oyun kendiliğinden başlar.
+      if (room.status === 'playing' && sideOf(room, net.uid)) {
+        hud.setHostWaiting(false);
+        setTimeout(() => { if (!online) startOnline(room); }, 500);
+      }
+      return;
+    }
+
+    if (room.status === 'ended') {
+      if (!netEnded) {
+        netEnded = true;
+        hud.toast('RAKİP ODADAN ÇIKTI', 2400);
+        hud.say('Rakip odadan çıktı');
+        syncHud();
+      }
+      return;
+    }
+    if (room.gen !== netGen || room.round !== round) {
+      const rematch = room.gen !== netGen;
+      netGen = room.gen;
+      round = room.round;
+      wins = { 1: room.wins1, 2: room.wins2 };
+      if (rematch) streak = { side: 0, count: 0 };
+      hud.closeWin();
+      adoptRound(room);
+      return;
+    }
+    if (room.moves.length > applied) {
+      for (let i = applied; i < room.moves.length; i++) remoteQueue.push(room.moves[i]);
+      applied = room.moves.length;
+      pump();
+    }
+
+    const quiet = opponentIdleFor(room, net.uid) > IDLE_LIMIT;
+    if (quiet && !oppQuiet) hud.toast('RAKİPTEN SES YOK', 1800);
+    oppQuiet = quiet;
+    syncHud();
+  }
+
+  function onNetError(e) {
+    if (e.code === 'gone') {
+      netEnded = true;
+      hud.toast('ODA KAPANDI', 2000);
+      syncHud();
+    } else if (e.code === 'offline') {
+      hud.toast('BAĞLANTI YOK', 1600);
+    }
+  }
+
+  function leaveRoom() {
+    const had = online || (net && net.room);
+    online = false;
+    netEnded = false;
+    mySide = 0;
+    applied = 0;
+    remoteQueue.length = 0;
+    if (had) {
+      epoch++;
+      if (net) net.leave().catch(() => { /* ayrılırken hata önemsiz */ });
+    }
+  }
+
   /* ── ayarlar ─────────────────────────────────────────────────── */
 
   function applySettings(patch) {
@@ -2249,6 +3102,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
 
   /** Menüden oyun başlatma: mod uygulanır ve her hâlükârda yeni maç açılır. */
   function startGame(level) {
+    leaveRoom();                     // yerel oyuna geçerken odayı bırak
     settings = saveSettings({ level });
     started = true;
     hud.syncMenu(menuState());
@@ -2265,7 +3119,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
     const i = renderer.cellAt(e.clientX, e.clientY, board);
     if (i < 0) return;
     cursorVisible = false;
-    play(i, false);
+    play(i);
   }, { passive: true });
 
   /* Klavye desteği masaüstü için sessizce açık: menüde tanıtılmıyor. */
@@ -2289,7 +3143,7 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
       case 'ArrowUp':    cursor = cursor - cols < 0 ? cursor : cursor - cols; cursorVisible = true; break;
       case 'ArrowDown':  cursor = cursor + cols >= board.size ? cursor : cursor + cols; cursorVisible = true; break;
       case ' ':
-      case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor, false); break;
+      case 'Enter':      audio.unlock(); cursorVisible = true; play(cursor); break;
       case 'z': case 'Z': undo(); break;
       case 'r': case 'R': newRound(true); break;
       case 'm': case 'M': api.setSound(!settings.sound); break;
@@ -2321,8 +3175,19 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
       hud.openMenu(panel);
     },
 
-    restartRound() { newRound(true); },
+    restartRound() {
+      if (online) { hud.toast('ÇEVRİMİÇİ TURDA KAPALI', 1400); return; }
+      newRound(true);
+    },
     nextRound(resetMatch) {
+      if (online) {
+        hud.closeWin();
+        if (netEnded) { hud.toast('ODA KAPANDI', 1600); return; }
+        const req = resetMatch ? net.rematch(netGen) : net.nextRound(round, wins);
+        req.catch(err => hud.toast(netMessage(err), 1800));
+        hud.toast(resetMatch ? 'RÖVANŞ İSTENDİ' : 'RAKİP BEKLENİYOR', 1500);
+        return;
+      }
       if (resetMatch) { newMatch(); return; }
       round++;
       newRound(false);
@@ -2330,6 +3195,58 @@ function createGame({ renderer, hud, audio, canvas, onLayout }) {
     newMatch,
     undo,
     applySettings,
+
+    /* ── çevrimiçi ─────────────────────────────────────────── */
+
+    async hostRoom() {
+      hud.netMsg('online', '');
+      hud.setHostBusy(true);
+      try {
+        const client = ensureNet();
+        const room = await client.createRoom({ board: settings.board, series: settings.series });
+        hud.setHostCode(room.code);
+        hud.setHostWaiting(true);
+        hud.netMsg('host', '');
+        hud.showPanel('host', 1);
+      } catch (e) {
+        hud.netMsg('online', netMessage(e), 'bad');
+      } finally {
+        hud.setHostBusy(false);
+      }
+    },
+
+    async joinRoom(code) {
+      hud.netMsg('join', '');
+      hud.setJoinBusy(true);
+      try {
+        const client = ensureNet();
+        const room = await client.joinRoom(code);
+        startOnline(room);
+      } catch (e) {
+        hud.netMsg('join', netMessage(e), 'bad');
+        haptic(20);
+      } finally {
+        hud.setJoinBusy(false);
+      }
+    },
+
+    cancelRoom() {
+      leaveRoom();
+      hud.setHostCode('');
+      hud.setHostWaiting(true);
+      hud.showPanel('online', -1);
+    },
+
+    leaveRoom() {
+      leaveRoom();
+      started = false;
+      hud.syncMenu(menuState());
+      hud.showPanel('home', -1);
+      hud.toast('ODADAN ÇIKILDI', 1400);
+    },
+
+    roomCode() { return net && net.room ? net.room.code : ''; },
+    setNetActive(active) { if (net) net.setActive(active); },
 
     setSound(on) {
       audio.setEnabled(on);
@@ -2416,6 +3333,10 @@ const tapped = fn => e => { audio.unlock(); haptic(8); fn(e); };
 d.mResume.addEventListener('click', tapped(() => game.resume()));
 d.mPlay2.addEventListener('click', tapped(() => game.playHuman()));
 d.mPlayAI.addEventListener('click', tapped(() => hud.showPanel('ai', 1)));
+d.mOnline.addEventListener('click', tapped(() => {
+  hud.netMsg('online', '');
+  hud.showPanel('online', 1);
+}));
 d.mLearn.addEventListener('click', tapped(() => hud.showPanel('learn', 1)));
 d.mSettings.addEventListener('click', tapped(() => hud.showPanel('settings', 1)));
 
@@ -2425,8 +3346,51 @@ d.lvStack.addEventListener('click', tapped(e => {
 }));
 
 for (const b of d.menu.querySelectorAll('[data-back]')) {
-  b.addEventListener('click', tapped(() => hud.showPanel('home', -1)));
+  const panel = b.closest('.panel').dataset.panel;
+  // Oda ekranlarından geri dönüş online paneline; oda kurulduysa kapatılır.
+  b.addEventListener('click', tapped(() => {
+    if (panel === 'host') { game.cancelRoom(); return; }
+    hud.showPanel(panel === 'join' ? 'online' : 'home', -1);
+  }));
 }
+
+/* ── çevrimiçi oda ekranları ────────────────────────────────── */
+let codeInput = '';
+
+d.mHost.addEventListener('click', tapped(() => game.hostRoom()));
+d.mJoin.addEventListener('click', tapped(() => {
+  codeInput = '';
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+  hud.showPanel('join', 1);
+}));
+d.btnCancelRoom.addEventListener('click', tapped(() => game.cancelRoom()));
+d.btnLeaveRoom.addEventListener('click', tapped(() => game.leaveRoom()));
+
+d.btnShareCode.addEventListener('click', tapped(async () => {
+  const code = game.roomCode();
+  if (!code) return;
+  const text = `NOVA · Kritik Kütle oda kodu: ${code}`;
+  try {
+    if (navigator.share) await navigator.share({ text });
+    else await navigator.clipboard.writeText(code);
+    hud.netMsg('host', 'KOD KOPYALANDI', 'good');
+  } catch {
+    hud.netMsg('host', 'KOD: ' + code);
+  }
+}));
+
+d.keypad.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const k = b.dataset.k;
+  if (k === 'del') codeInput = codeInput.slice(0, -1);
+  else if (k === 'clear') codeInput = '';
+  else if (codeInput.length < 4) codeInput += k;
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+}));
+d.btnJoinGo.addEventListener('click', tapped(() => game.joinRoom(codeInput)));
 
 d.boardSeg.addEventListener('click', tapped(e => {
   const b = e.target.closest('button');
@@ -2481,6 +3445,7 @@ function applyTier() {
 
 document.addEventListener('visibilitychange', () => {
   paused = document.hidden;
+  game.setNetActive(!paused);      // arka planda oda yoklaması da dursun
   if (!paused) { last = performance.now(); winStart = last; winWork = winInterval = winFrames = 0; }
 });
 

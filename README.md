@@ -10,10 +10,11 @@ Bağımlılık yok, derleme adımı zorunlu değil: `dist/index.html` tek başı
 (çevrimdışı, `file://` üzerinden bile) çalışır.
 
 ```
-npm test        # kural motoru + AI testleri
+npm test        # kural motoru, AI ve oda protokolü testleri
 npm run dev     # http://localhost:5173 — kaynak sürüm (ES modülleri)
 npm run build   # dist/index.html üretir (tek dosya, satır içi CSS + JS)
 npm run check   # test + derleme
+npm run net:check   # canlı Firebase odasına uçtan uca denetim (ağ ister)
 ```
 
 ## Oyun
@@ -25,12 +26,13 @@ npm run check   # test + derleme
 | **Tur** | rakibin son çekirdeği yutulunca biter |
 | **Maç** | TEK / İLK 3 / İLK 5 |
 | **Tahta** | 5×4 · 6×5 · 8×6 |
-| **Rakip** | 2 oyuncu · KOLAY · NORMAL · ZOR |
+| **Rakip** | 2 oyuncu · KOLAY · NORMAL · ZOR · online |
 
 ### Menü
 
-Ana menü dört girişten oluşur: **OYNA 2P**, **OYNA AI** (zorluk ekranı),
-**ÖĞREN** (görsel kural kartları) ve **AYARLAR** (tahta, seri, ses, titreşim,
+Ana menü beş girişten oluşur: **OYNA 2P**, **OYNA AI** (zorluk ekranı),
+**OYNA ONLINE** (oda kur / kodla katıl), **ÖĞREN** (görsel kural kartları) ve
+**AYARLAR** (tahta, seri, ses, titreşim,
 istatistik sıfırlama). Oyun içindeyken alt konsoldaki ≡ düğmesi aynı menüyü
 duraklatma ekranı olarak açar; üstte **DEVAM ET**, tur bittiyse **SONRAKİ TUR**
 görünür. Menü canlı sahnenin üzerine yarı saydam perdeyle biner.
@@ -47,6 +49,9 @@ src/
   config.js         sabitler: taraflar, tahta/seri/zorluk tanımları
   engine.js         kural motoru — saf, DOM'suz, test edilebilir
   ai.js             negamax + alfa-beta, zaman bütçeli iteratif derinleşme
+  room.js           çevrimiçi oda protokolü — saf mantık + Firestore kodlaması
+  net.js            anonim giriş ve oda belgesi (Firebase REST, SDK yok)
+  firebase-config.js  proje anahtarları (gizli değil, bkz. firestore.rules)
   game.js           sıra akışı, animasyonlu zincir, geri alma, girdi
   renderer.js       canvas çizimi, parçacıklar, kamera
   sprites.js        ön-render sprite atlası
@@ -59,7 +64,9 @@ src/
 tools/
   build.mjs         modülleri tek IIFE'ye derler, CSS'i satır içine alır
   serve.mjs         bağımlılıksız statik sunucu
-tests/              node:test ile çalışan kural ve AI testleri
+  net-check.mjs     canlı odaya uçtan uca denetim (ağ ister)
+tests/              node:test ile çalışan kural, AI ve oda testleri
+firestore.rules     oda güvenlik kuralları (dağıtılması gerekir)
 dist/index.html     derlenmiş tek dosya sürüm
 ```
 
@@ -76,6 +83,54 @@ Animasyonlu zincir `await` ile ilerlediği için tur ortasında sıfırlanabilir
 Her tur bir `epoch` numarasıyla damgalanır; yeni tur, geri alma ya da ayar
 değişikliği numarayı artırır ve yarıda kalan zincir bir sonraki beklemede
 sessizce çekilir.
+
+### Çevrimiçi oda
+
+Bir oyuncu **ODA KUR** der, dört haneli kod alır; ikinci oyuncu kodu tuş
+takımına girip katılır ve oyun kendiliğinden başlar. Kimlik doğrulama anonim:
+kimse hesap açmaz, tarayıcıda saklanan anonim kimlik sayfa yenilense de aynı
+oyuncuyu işaret eder.
+
+**Odada tahta durumu tutulmaz — yalnız hamle listesi taşınır.** Kural motoru
+saf ve deterministik olduğu için iki istemci aynı listeden bit bit aynı tahtayı
+üretir; "senkron" diye ayrı bir sorun kalmaz ve bir tur baştan oynatılabilir.
+Kendi hamlen anında oynanır ve aynı anda gönderilir; sunucu reddederse tur
+odadaki listeden yeniden kurulur.
+
+Firebase JS SDK yerine düz REST kullanılıyor. Böylece oyun sıfır bağımlılıkta
+kalıyor, tek dosya sürümü hâlâ tek dosya ve yerel modlar ağa hiç çıkmıyor.
+SDK'nın canlı dinleyicisi olmadığı için oda yoklanıyor: sıra rakipteyken ~0,9 sn,
+sıra bendeyken ~2,6 sn, sekme arka plandayken hiç. Her yazma son okunan belgenin
+`updateTime` damgasını koşul olarak gönderir (`currentDocument.updateTime`), yani
+iki istemci aynı anda yazmaya kalkarsa biri reddedilir ve tazeleyip yeniden
+dener — kayıp güncelleme olmaz.
+
+Odalar `rooms/{kod}` belgesinde tutulur; kod belge kimliği olduğu için aynı kodu
+iki kişinin alması mümkün değil (çakışan oluşturma isteği atomik olarak reddedilir).
+
+#### Firebase kurulumu
+
+Proje `nov4star`. `src/firebase-config.js` içindeki anahtarlar gizli değildir;
+Firebase web anahtarı bir kimliktir, sır değil. Güvenlik tümüyle kurallardan gelir:
+
+1. **Authentication → Sign-in method → Anonymous** açık olmalı (açık).
+2. **Firestore** oluşturulmuş olmalı (oluşturulmuş).
+3. `firebase deploy --only firestore:rules` ile bu depodaki `firestore.rules`
+   dağıtılmalı. **Dağıtılmadığı sürece odalar herkese açıktır** — bu depo
+   hazırlanırken proje hâlâ test kurallarındaydı, yani `rooms` koleksiyonu
+   kimlik doğrulamasız okunabiliyordu.
+4. İsteğe bağlı: `rooms` koleksiyonunda `expiresAt` alanına **TTL** tanımlayarak
+   terk edilmiş odaları Firebase'in kendiliğinden silmesini sağlayın
+   (oyun bu alanı zaten yazıyor, varsayılan 6 saat).
+
+`npm run net:check` gerçek projeye bağlanıp iki oyuncu simüle eder: anonim giriş,
+oda kurma, katılma, hamle alışverişi, eski sayaçla gelen hamlenin reddi, dolu
+odaya üçüncü oyuncunun alınmaması, tur ilerletme, rövanş ve odanın kapanması.
+Denetim açtığı odayı siler.
+
+Dört haneli kod 9 000 ihtimal demek: bir başkasının kodunu deneyerek odana
+düşmesi teorik olarak mümkün. Sohbet niteliğinde bir oyun için kabul edilebilir;
+kritik bir şey saklanmıyor.
 
 ### Uyarlanabilir kalite
 

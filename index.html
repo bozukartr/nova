@@ -20,7 +20,7 @@
 <div class="ui">
   <div class="hud">
     <div class="pod p1 live" id="pod1" style="--c:var(--p1)">
-      <div class="pname">MAGMA</div>
+      <div class="pname">MAGMA<span class="ai" id="you1" hidden>SEN</span></div>
       <div class="pcores" id="core1">00</div>
       <div class="pips" id="pips1"></div>
     </div>
@@ -30,7 +30,7 @@
       <div class="lbl" id="seriesLbl">İLK 3</div>
     </div>
     <div class="pod p2" id="pod2" style="--c:var(--p2)">
-      <div class="pname">AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
+      <div class="pname"><span class="ai" id="you2" hidden>SEN</span>AURORA<span class="ai" id="aiBadge" hidden>AI</span></div>
       <div class="pcores" id="core2">00</div>
       <div class="pips" id="pips2"></div>
     </div>
@@ -88,6 +88,12 @@
           <span class="chev" aria-hidden="true">›</span>
         </button>
 
+        <button class="mbtn online" id="mOnline">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c4.4 4.6 4.4 11.8 0 16.8-4.4-5-4.4-12.2 0-16.8z"/></svg></span>
+          <span class="txt"><span class="t">OYNA ONLINE</span><span class="s">ODA KUR VEYA KODLA KATIL</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+
         <button class="mbtn" id="mLearn">
           <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6 21 8l-9 4.4L3 8z"/><path d="M6 10.2V15c0 1.9 2.9 3.2 6 3.2s6-1.3 6-3.2v-4.8"/></svg></span>
           <span class="txt"><span class="t">ÖĞREN</span><span class="s">30 SANİYEDE KURALLAR</span></span>
@@ -101,7 +107,70 @@
         </button>
       </nav>
 
+      <button class="ghost" id="btnLeaveRoom" hidden>ODADAN ÇIK</button>
       <p class="foot" id="menuFoot"></p>
+    </section>
+
+    <section class="panel" data-panel="online" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>ONLINE</h2>
+      </div>
+      <div class="stack">
+        <button class="mbtn magma" id="mHost">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="txt"><span class="t">ODA KUR</span><span class="s">DÖRT HANELİ KOD ÜRET</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+        <button class="mbtn aurora" id="mJoin">
+          <span class="glyph"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M4 12h11M11.5 8.5 15 12l-3.5 3.5"/></svg></span>
+          <span class="txt"><span class="t">ODAYA KATIL</span><span class="s">RAKİBİNİN KODUNU GİR</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+      </div>
+      <p class="note">Aynı odadaki iki telefon da internete bağlı olmalı. Tahta ve seri ayarını odayı kuran belirler.</p>
+      <p class="netmsg" id="onlineMsg"></p>
+    </section>
+
+    <section class="panel" data-panel="host" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>ODA KODU</h2>
+      </div>
+      <div class="hostbox">
+        <div class="codebig" id="hostCode">····</div>
+        <p class="hostnote">Bu kodu rakibine ilet, katılınca oyun kendiliğinden başlar.</p>
+        <p class="waiting" id="hostWait"><i></i><i></i><i></i><span>RAKİP BEKLENİYOR</span></p>
+      </div>
+      <p class="netmsg" id="hostMsg"></p>
+      <button class="cta" id="btnShareCode">KODU KOPYALA</button>
+      <button class="ghost" id="btnCancelRoom">ODAYI KAPAT</button>
+    </section>
+
+    <section class="panel" data-panel="join" hidden>
+      <div class="phead">
+        <button class="back" data-back aria-label="Geri">‹</button>
+        <h2>KODLA KATIL</h2>
+      </div>
+      <div class="code" id="codeBoxes" aria-label="Dört haneli oda kodu">
+        <b></b><b></b><b></b><b></b>
+      </div>
+      <p class="netmsg" id="joinMsg"></p>
+      <div class="pad" id="keypad">
+        <button type="button" data-k="1">1</button>
+        <button type="button" data-k="2">2</button>
+        <button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button>
+        <button type="button" data-k="5">5</button>
+        <button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button>
+        <button type="button" data-k="8">8</button>
+        <button type="button" data-k="9">9</button>
+        <button type="button" class="pad-ghost" data-k="clear">C</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" class="pad-ghost" data-k="del">⌫</button>
+      </div>
+      <button class="cta" id="btnJoinGo" disabled>KATIL</button>
     </section>
 
     <section class="panel" data-panel="ai" hidden>

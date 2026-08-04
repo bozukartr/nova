@@ -16,6 +16,8 @@ export function createHud() {
     aiBadge: el('aiBadge'),
     tugA: el('tugA'), tugB: el('tugB'), tugKnob: el('tugKnob'),
     turnPill: el('turnPill'), turnWho: el('turnWho'),
+    turnSub: document.querySelector('.turn .sub'),
+    you1: el('you1'), you2: el('you2'),
     chain: el('chain'), chainN: el('chainN'),
     toast: el('toast'), live: el('live'), fps: el('fps'),
 
@@ -26,6 +28,12 @@ export function createHud() {
     mResume: el('mResume'), mResumeT: el('mResumeT'), mResumeSub: el('mResumeSub'),
     mPlay2: el('mPlay2'), mPlayAI: el('mPlayAI'), mAISub: el('mAISub'),
     mLearn: el('mLearn'), mSettings: el('mSettings'), mSetSub: el('mSetSub'),
+    mOnline: el('mOnline'), btnLeaveRoom: el('btnLeaveRoom'),
+    mHost: el('mHost'), mJoin: el('mJoin'),
+    onlineMsg: el('onlineMsg'), hostMsg: el('hostMsg'), joinMsg: el('joinMsg'),
+    hostCode: el('hostCode'), hostWait: el('hostWait'),
+    btnShareCode: el('btnShareCode'), btnCancelRoom: el('btnCancelRoom'),
+    codeBoxes: el('codeBoxes'), keypad: el('keypad'), btnJoinGo: el('btnJoinGo'),
     menuFoot: el('menuFoot'), lvStack: el('lvStack'),
     boardSeg: el('boardSeg'), seriesSeg: el('seriesSeg'),
     swSound: el('swSound'), swHaptic: el('swHaptic'),
@@ -167,11 +175,51 @@ export function createHud() {
       dom.swSound.setAttribute('aria-checked', String(state.sound));
       dom.swHaptic.setAttribute('aria-checked', String(state.haptics));
 
-      dom.aiBadge.hidden = state.level === AI_OFF;
+      dom.btnLeaveRoom.hidden = !state.online;
+      dom.aiBadge.hidden = state.level === AI_OFF || state.online;
       dom.btnSound.textContent = state.sound ? '♪' : '♪̸';
       dom.btnSound.classList.toggle('off', !state.sound);
       dom.btnSound.setAttribute('aria-pressed', String(state.sound));
       dom.seriesLbl.textContent = labelOf(SERIES, state.series);
+    },
+
+    /* ── online panelleri ───────────────────────────────────── */
+
+    /** which: 'online' | 'host' | 'join' · kind: '' | 'bad' | 'good' */
+    netMsg(which, text = '', kind = '') {
+      const node = dom[which + 'Msg'];
+      if (!node) return;
+      node.textContent = text;
+      node.className = 'netmsg' + (kind ? ' ' + kind : '');
+    },
+
+    setHostCode(code) { dom.hostCode.textContent = code || '····'; },
+
+    setHostWaiting(waiting, text) {
+      dom.hostWait.classList.toggle('done', !waiting);
+      dom.hostWait.querySelector('span').textContent =
+        text || (waiting ? 'RAKİP BEKLENİYOR' : 'RAKİP GELDİ');
+    },
+
+    /** Kod kutularını doldurur ve KATIL düğmesini uygunluğa göre açar. */
+    setCodeInput(value) {
+      const digits = String(value || '');
+      [...dom.codeBoxes.children].forEach((box, i) => {
+        box.textContent = digits[i] || '';
+        box.classList.toggle('filled', !!digits[i]);
+        box.classList.toggle('next', i === digits.length);
+      });
+      dom.btnJoinGo.disabled = digits.length !== 4;
+    },
+
+    setJoinBusy(busy) {
+      dom.btnJoinGo.disabled = busy || [...dom.codeBoxes.children].some(b => !b.textContent);
+      dom.btnJoinGo.textContent = busy ? 'KATILIYOR…' : 'KATIL';
+    },
+
+    setHostBusy(busy) {
+      dom.mHost.disabled = busy;
+      dom.mHost.querySelector('.s').textContent = busy ? 'ODA AÇILIYOR…' : 'DÖRT HANELİ KOD ÜRET';
     },
 
     /* ── oyun içi HUD ───────────────────────────────────────── */
@@ -189,8 +237,15 @@ export function createHud() {
       dom.pod1.classList.toggle('live', state.side === 1 && !state.over);
       dom.pod2.classList.toggle('live', state.side === 2 && !state.over);
       dom.roundNo.textContent = pad2(state.round);
-      dom.turnWho.textContent = state.thinking ? 'DÜŞÜNÜYOR' : SIDES[state.side].name;
+      /* Çevrimiçi oyunda taraf adı yerine "sıra kimde" bilgisi daha yararlı. */
+      dom.turnWho.textContent = state.online
+        ? (state.mine ? 'SIRA SENDE' : 'RAKİP OYNUYOR')
+        : (state.thinking ? 'DÜŞÜNÜYOR' : SIDES[state.side].name);
+      if (dom.turnSub) dom.turnSub.hidden = !!state.online;
+      dom.you1.hidden = !(state.online && state.mySide === 1);
+      dom.you2.hidden = !(state.online && state.mySide === 2);
       dom.btnUndo.disabled = !state.canUndo;
+      dom.btnNew.disabled = !!state.online;
 
       for (const p of [1, 2]) {
         const box = dom['pips' + p];
