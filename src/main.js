@@ -13,7 +13,7 @@ import { createHud } from './hud.js';
 import { createGame } from './game.js';
 import { loadSettings } from './storage.js';
 import { updateTweens, tween, Ease } from './anim.js';
-import { REDUCED } from './util.js';
+import { REDUCED, haptic } from './util.js';
 
 const gameCanvas = document.getElementById('game');
 const bgCanvas = document.getElementById('bg');
@@ -45,36 +45,94 @@ game = createGame({ renderer, hud, audio, canvas: gameCanvas, onLayout: layout }
 /* ── kontroller ─────────────────────────────────────────────── */
 const d = hud.dom;
 
-d.modeSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  audio.unlock();
-  game.applySettings({ level: +b.dataset.lv });
-});
-d.boardSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  game.applySettings({ board: b.dataset.val });
-});
-d.seriesSeg.addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  game.applySettings({ series: +b.dataset.val });
-});
+/* Menüdeki her dokunuşta hafif bir titreşim: dokunsal geri bildirim. */
+const tapped = fn => e => { audio.unlock(); haptic(8); fn(e); };
 
-d.btnStart.addEventListener('click', () => { audio.unlock(); game.start(); });
-d.btnRules.addEventListener('click', () => hud.openSheet('sheetRules'));
-d.btnNew.addEventListener('click', () => { hud.closeSheet('sheetWin'); game.restartRound(); });
+d.mResume.addEventListener('click', tapped(() => game.resume()));
+d.mPlay2.addEventListener('click', tapped(() => game.playHuman()));
+d.mPlayAI.addEventListener('click', tapped(() => hud.showPanel('ai', 1)));
+d.mOnline.addEventListener('click', tapped(() => {
+  hud.netMsg('online', '');
+  hud.showPanel('online', 1);
+}));
+d.mLearn.addEventListener('click', tapped(() => hud.showPanel('learn', 1)));
+d.mSettings.addEventListener('click', tapped(() => hud.showPanel('settings', 1)));
+
+d.lvStack.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.playAI(+b.dataset.lv);
+}));
+
+for (const b of d.menu.querySelectorAll('[data-back]')) {
+  const panel = b.closest('.panel').dataset.panel;
+  // Oda ekranlarından geri dönüş online paneline; oda kurulduysa kapatılır.
+  b.addEventListener('click', tapped(() => {
+    if (panel === 'host') { game.cancelRoom(); return; }
+    hud.showPanel(panel === 'join' ? 'online' : 'home', -1);
+  }));
+}
+
+/* ── çevrimiçi oda ekranları ────────────────────────────────── */
+let codeInput = '';
+
+d.mHost.addEventListener('click', tapped(() => game.hostRoom()));
+d.mJoin.addEventListener('click', tapped(() => {
+  codeInput = '';
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+  hud.showPanel('join', 1);
+}));
+d.btnCancelRoom.addEventListener('click', tapped(() => game.cancelRoom()));
+d.btnLeaveRoom.addEventListener('click', tapped(() => game.leaveRoom()));
+
+d.btnShareCode.addEventListener('click', tapped(async () => {
+  const code = game.roomCode();
+  if (!code) return;
+  const text = `NOVA · Kritik Kütle oda kodu: ${code}`;
+  try {
+    if (navigator.share) await navigator.share({ text });
+    else await navigator.clipboard.writeText(code);
+    hud.netMsg('host', 'KOD KOPYALANDI', 'good');
+  } catch {
+    hud.netMsg('host', 'KOD: ' + code);
+  }
+}));
+
+d.keypad.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const k = b.dataset.k;
+  if (k === 'del') codeInput = codeInput.slice(0, -1);
+  else if (k === 'clear') codeInput = '';
+  else if (codeInput.length < 4) codeInput += k;
+  hud.setCodeInput(codeInput);
+  hud.netMsg('join', '');
+}));
+d.btnJoinGo.addEventListener('click', tapped(() => game.joinRoom(codeInput)));
+
+d.boardSeg.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.applySettings({ board: b.dataset.val });
+}));
+d.seriesSeg.addEventListener('click', tapped(e => {
+  const b = e.target.closest('button');
+  if (b) game.applySettings({ series: +b.dataset.val });
+}));
+d.swSound.addEventListener('click', tapped(() =>
+  game.setSound(d.swSound.getAttribute('aria-checked') !== 'true')));
+d.swHaptic.addEventListener('click', tapped(() =>
+  game.setHaptics(d.swHaptic.getAttribute('aria-checked') !== 'true')));
+d.btnResetStats.addEventListener('click', tapped(() => game.resetStats()));
+
+d.btnMenu.addEventListener('click', tapped(() => game.openMenu('home')));
+d.btnNew.addEventListener('click', tapped(() => { hud.closeWin(); game.restartRound(); }));
 d.btnUndo.addEventListener('click', () => game.undo());
-d.btnSound.addEventListener('click', () => { audio.unlock(); game.toggleSound(); });
-d.btnNext.addEventListener('click', e => {
-  hud.closeSheet('sheetWin');
+d.btnSound.addEventListener('click', tapped(() => game.setSound(!game.settings.sound)));
+d.btnNext.addEventListener('click', tapped(e => {
+  hud.closeWin();
   game.nextRound(!!e.currentTarget.dataset.reset);
-});
-d.btnSettings.addEventListener('click', () => {
-  hud.closeSheet('sheetWin');
-  hud.openSheet('sheetRules');
-});
+}));
+d.btnToMenu.addEventListener('click', tapped(() => game.openMenu('home')));
 
 /* ── ölçüm ──────────────────────────────────────────────────── */
 addEventListener('resize', layout);
@@ -105,6 +163,7 @@ function applyTier() {
 
 document.addEventListener('visibilitychange', () => {
   paused = document.hidden;
+  game.setNetActive(!paused);      // arka planda oda yoklaması da dursun
   if (!paused) { last = performance.now(); winStart = last; winWork = winInterval = winFrames = 0; }
 });
 
@@ -179,4 +238,3 @@ if (!REDUCED) {
     onDone: () => { dock.style.transform = ''; dock.style.opacity = ''; }
   });
 }
-hud.openSheet('sheetRules');

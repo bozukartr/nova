@@ -9,8 +9,11 @@ export const REDUCED = typeof matchMedia === 'function'
   ? matchMedia('(prefers-reduced-motion: reduce)').matches
   : false;
 
-/** Titreşim: desteklenmeyen ya da hareket azaltılmış cihazda sessizce atlanır. */
+let hapticsOn = true;
+export function setHaptics(on) { hapticsOn = !!on; }
+
+/** Titreşim: kapalıysa, desteklenmiyorsa ya da hareket azaltılmışsa sessizce atlanır. */
 export function haptic(ms) {
-  if (REDUCED) return;
+  if (!hapticsOn || REDUCED) return;
   try { navigator.vibrate && navigator.vibrate(ms); } catch { /* yoksay */ }
 }

@@ -27,9 +27,9 @@ export const SERIES = [
 /** AI seviyeleri. -1 = iki oyuncu, tek telefon. */
 export const AI_OFF = -1;
 export const LEVELS = [
-  { level: 0, label: 'KOLAY',  depth: 1, width: 12, noise: 0.42, budget: 30  },
-  { level: 1, label: 'NORMAL', depth: 2, width: 10, noise: 0.10, budget: 60  },
-  { level: 2, label: 'ZOR',    depth: 4, width: 8,  noise: 0.00, budget: 220 }
+  { level: 0, label: 'KOLAY',  desc: 'Acemi rakip, hata yapar',      depth: 1, width: 12, noise: 0.42, budget: 30  },
+  { level: 1, label: 'NORMAL', desc: 'Dengeli, fırsat kollar',       depth: 2, width: 10, noise: 0.10, budget: 60  },
+  { level: 2, label: 'ZOR',    desc: 'Derin arama, affetmez',        depth: 4, width: 8,  noise: 0.00, budget: 160 }
 ];
 
 /** AI hangi tarafı oynar. */
@@ -39,7 +39,8 @@ export const DEFAULTS = {
   level: AI_OFF,
   board: 'm',
   series: 3,
-  sound: true
+  sound: true,
+  haptics: true
 };
 
 export const STORE_KEY = 'nova.kritikkutle.v1';
